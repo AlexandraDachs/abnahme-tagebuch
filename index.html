@@ -1976,3 +1976,69 @@ function importData() {
     weightLog = load('ad_weightLog', []);
     dayLogs   = load('ad_dayLogs', {});
     recipes   = load('ad_recipes', []);
+    settings  = load('ad_settings', { height:'160', goalWeight:'', age:'55', weight:'84' });
+    renderWeightHistory();
+    renderDay();
+    renderRecipes();
+    document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
+    setDriveStatus('\u2705 Geladen');
+    setTimeout(() => setDriveStatus(null), 3000);
+  } catch(e) {
+    setDriveStatus('\u274c Fehler');
+    setTimeout(() => setDriveStatus(null), 4000);
+  }
+}
+
+async function findDriveFile() {
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D'${DRIVE_FILE_NAME}'%20and%20trashed%3Dfalse&fields=files(id)`, {
+    headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+  });
+  const data = await resp.json();
+  return data.files && data.files.length ? data.files[0].id : null;
+}
+
+function setDriveStatus(msg) {
+  const el = document.getElementById('driveBtnText');
+  if (!el) return;
+  el.textContent = msg || (driveAccessToken ? 'Sync' : 'Drive');
+}
+
+function exportData() {
+  const data = {
+    ad_weightLog: load('ad_weightLog', []),
+    ad_dayLogs:   load('ad_dayLogs', {}),
+    ad_recipes:   load('ad_recipes', []),
+    ad_settings:  load('ad_settings', {}),
+    exportedAt: new Date().toISOString()
+  };
+  document.getElementById('exportBox').value = JSON.stringify(data);
+  document.getElementById('exportBox').select();
+}
+
+function importData() {
+  const text = document.getElementById('importBox').value.trim();
+  if (!text) { alert('Kein Text eingefügt.'); return; }
+  try {
+    const data = JSON.parse(text);
+    if (data.ad_weightLog) save('ad_weightLog', data.ad_weightLog);
+    if (data.ad_dayLogs)   save('ad_dayLogs',   data.ad_dayLogs);
+    if (data.ad_recipes)   save('ad_recipes',   data.ad_recipes);
+    if (data.ad_settings)  save('ad_settings',  data.ad_settings);
+    weightLog = load('ad_weightLog', []);
+    dayLogs   = load('ad_dayLogs', {});
+    recipes   = load('ad_recipes', []);
+    settings  = load('ad_settings', { height:'160', goalWeight:'', age:'55', weight:'84' });
+    renderWeightHistory(); renderDay(); renderRecipes();
+    document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
+    document.getElementById('syncModal').style.display = 'none';
+    alert('Daten importiert!');
+  } catch(e) { alert('Fehler beim Importieren.'); }
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { scope: '/abnahme-tagebuch/' })
+    .catch(e => console.log('SW:', e));
+}
+</script>
+</body>
+</html>
