@@ -1782,7 +1782,7 @@ function getSampleRecipes() {
 // ===== GOOGLE DRIVE SYNC =====
 // Trage hier deine Client-ID ein (von Google Cloud Console):
 const GOOGLE_CLIENT_ID = '598730149643-4mrh4bsk8nkvab7qchna030qgo5r7495.apps.googleusercontent.com';
-const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILE_NAME = 'abnahme-daten.json';
 
 let driveAccessToken = null;
@@ -1864,7 +1864,7 @@ async function saveToDrive() {
       const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] })
+        body: JSON.stringify({ name: DRIVE_FILE_NAME })
       }).then(r => r.json());
       driveFileId = meta.id;
       await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
@@ -1914,7 +1914,7 @@ async function loadFromDrive() {
 }
 
 async function findDriveFile() {
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id)`, {
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D'${DRIVE_FILE_NAME}'%20and%20trashed%3Dfalse&fields=files(id)`, {
     headers: { 'Authorization': `Bearer ${driveAccessToken}` }
   });
   const data = await resp.json();
