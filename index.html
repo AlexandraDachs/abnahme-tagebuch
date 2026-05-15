@@ -40,24 +40,7 @@
   }
   header h1 { font-size: 18px; font-weight: 700; }
   header span { font-size: 13px; opacity: 0.85; margin-left: auto; }
-  #driveBtn {
-    background: rgba(255,255,255,0.18);
-    border: 1px solid rgba(255,255,255,0.4);
-    color: white;
-    border-radius: 20px;
-    padding: 5px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-    transition: background 0.15s;
-  }
-  #driveBtn:hover { background: rgba(255,255,255,0.28); }
-  #driveBtn.connected { background: rgba(255,255,255,0.25); }
-  #syncStatus { font-size: 11px; opacity: 0.8; }
+
 
   nav {
     display: flex;
@@ -207,11 +190,7 @@
   <span style="font-size:22px">🥗</span>
   <h1>Abnahme Tagebuch</h1>
   <span id="headerDate"></span>
-  <button id="driveBtn" onclick="driveAction()" title="Google Drive Sync">
-    <span id="driveBtnIcon">☁️</span>
-    <span id="driveBtnText">Drive</span>
-  </button>
-  <button id="driveBtn" onclick="document.getElementById('syncModal').style.display='flex'" title="Daten exportieren/importieren" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">
+  <button onclick="document.getElementById('syncModal').style.display='flex'" title="Daten exportieren/importieren" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">
     📦 Sync
   </button>
 </header>
@@ -1919,4 +1898,87 @@ async function loadFromDrive() {
       headers: { 'Authorization': `Bearer ${driveAccessToken}` }
     });
     const data = await resp.json();
-    // Nur überschre
+    if (data.ad_weightLog) localStorage.setItem('ad_weightLog', JSON.stringify(data.ad_weightLog));
+    if (data.ad_dayLogs)   localStorage.setItem('ad_dayLogs',   JSON.stringify(data.ad_dayLogs));
+    if (data.ad_recipes)   localStorage.setItem('ad_recipes',   JSON.stringify(data.ad_recipes));
+    if (data.ad_settings)  localStorage.setItem('ad_settings',  JSON.stringify(data.ad_settings));
+    weightLog = load('ad_weightLog', []);
+    dayLogs   = load('ad_dayLogs', {});
+    recipes   = load('ad_recipes', []);
+    settings  = load('ad_settings', { height:'160', goalWeight:'', age:'55', weight:'84' });
+    renderWeightHistory();
+    renderDay();
+    renderRecipes();
+    document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
+    setDriveStatus('✅ Geladen');
+    setTimeout(() => setDriveStatus(null), 3000);
+  } catch(e) {
+    setDriveStatus('❌ Fehler');
+    setTimeout(() => setDriveStatus(null), 4000);
+  }
+}
+
+async function findDriveFile() {
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D'${DRIVE_FILE_NAME}'%20and%20trashed%3Dfalse&fields=files(id)`, {
+    headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+  });
+  const data = await resp.json();
+  return data.files && data.files.length ? data.files[0].id : null;
+}
+
+function setDriveStatus(msg) {
+  const btn = document.getElementById('driveBtnText');
+  if (!btn) return;
+  if (msg) {
+    btn.textContent = msg;
+  } else {
+    btn.textContent = driveAccessToken ? 'Sync' : 'Drive';
+  }
+}
+
+// ===== EXPORT / IMPORT =====
+function exportData() {
+  const data = {
+    ad_weightLog: load('ad_weightLog', []),
+    ad_dayLogs:   load('ad_dayLogs', {}),
+    ad_recipes:   load('ad_recipes', []),
+    ad_settings:  load('ad_settings', {}),
+    exportedAt: new Date().toISOString()
+  };
+  document.getElementById('exportBox').value = JSON.stringify(data);
+  document.getElementById('exportBox').select();
+}
+
+function importData() {
+  const text = document.getElementById('importBox').value.trim();
+  if (!text) { alert('Kein Text eingefügt.'); return; }
+  try {
+    const data = JSON.parse(text);
+    if (data.ad_weightLog) save('ad_weightLog', data.ad_weightLog);
+    if (data.ad_dayLogs)   save('ad_dayLogs',   data.ad_dayLogs);
+    if (data.ad_recipes)   save('ad_recipes',   data.ad_recipes);
+    if (data.ad_settings)  save('ad_settings',  data.ad_settings);
+    weightLog = load('ad_weightLog', []);
+    dayLogs   = load('ad_dayLogs', {});
+    recipes   = load('ad_recipes', []);
+    settings  = load('ad_settings', { height:'160', goalWeight:'', age:'55', weight:'84' });
+    renderWeightHistory();
+    renderDay();
+    renderRecipes();
+    document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
+    document.getElementById('syncModal').style.display = 'none';
+    alert('✅ Daten erfolgreich importiert!');
+  } catch(e) {
+    alert('Fehler beim Importieren. Bitte den kopierten Text prüfen.');
+  }
+}
+
+// ===== SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { scope: '/abnahme-tagebuch/' })
+    .then(() => console.log('SW registered'))
+    .catch(e => console.log('SW error:', e));
+}
+</script>
+</body>
+</html>
