@@ -1811,8 +1811,7 @@ function connectDrive() {
       document.getElementById('driveBtn').classList.add('connected');
       document.getElementById('driveBtnIcon').textContent = '✅';
       document.getElementById('driveBtnText').textContent = 'Sync';
-      // Erst laden, dann mergen
-      await loadFromDrive();
+      // Lokale Daten zuerst sichern
       await saveToDrive();
     }
   });
