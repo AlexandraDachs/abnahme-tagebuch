@@ -11,7 +11,6 @@
 <link rel="manifest" href="manifest.json">
 <title>Abnahme Tagebuch – Alexandra</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     color-scheme: light;
@@ -566,10 +565,7 @@ function load(key, def) {
 }
 function save(key, val) {
   localStorage.setItem(key, JSON.stringify(val));
-  if (driveAccessToken && key.startsWith('ad_')) {
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(saveToDrive, 3000);
-  }
+
 }
 
 let weightLog = load('ad_weightLog', []);
@@ -1799,156 +1795,6 @@ function getSampleRecipes() {
     { id: '4', name: 'Gemüsesuppe', cat: 'Suppe', cal: 180, portions: 2, protein: '6', carbs: '28', fat: '4', ingredients: '2 Karotten\n2 Kartoffeln\n1 Stange Lauch\n1 Zwiebel\n800ml Gemüsebrühe\nSalz, Pfeffer, Petersilie', instructions: 'Gemüse würfeln, in Brühe ca. 20 Min köcheln. Würzen und mit Petersilie servieren.', notes: 'Perfekt für kalte Tage – wenig Kalorien, viel Wärme.' },
     { id: '5', name: 'Quark mit Leinsamen', cat: 'Snack', cal: 160, portions: 1, protein: '18', carbs: '8', fat: '5', ingredients: '200g Magerquark\n1 EL Leinsamen\n1 TL Honig', instructions: 'Alles verrühren und genießen.', notes: 'Perfekter Snack – satt und eiweißreich.' },
   ];
-}
-
-// ===== GOOGLE DRIVE SYNC =====
-// Trage hier deine Client-ID ein (von Google Cloud Console):
-const GOOGLE_CLIENT_ID = '598730149643-4mrh4bsk8nkvab7qchna030qgo5r7495.apps.googleusercontent.com';
-const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
-const DRIVE_FILE_NAME = 'abnahme-daten.json';
-
-let driveAccessToken = null;
-let driveFileId = null;
-let syncTimer = null;
-
-function driveAction() {
-  if (!driveAccessToken) {
-    connectDrive();
-  } else {
-    showDriveMenu();
-  }
-}
-
-function connectDrive() {
-  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('DEINE')) {
-    alert('Google Drive noch nicht eingerichtet.\nBitte erst die Client-ID eintragen.');
-    return;
-  }
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: DRIVE_SCOPES,
-    callback: async (resp) => {
-      if (resp.error) { console.error(resp); return; }
-      driveAccessToken = resp.access_token;
-      document.getElementById('driveBtn').classList.add('connected');
-      document.getElementById('driveBtnIcon').textContent = '✅';
-      document.getElementById('driveBtnText').textContent = 'Sync';
-      // Lokale Daten zuerst sichern
-      await saveToDrive();
-    }
-  });
-  client.requestAccessToken();
-}
-
-function showDriveMenu() {
-  const actions = [
-    { label: '⬆️ Jetzt speichern', fn: saveToDrive },
-    { label: '⬇️ Neu laden', fn: loadFromDrive },
-    { label: '🔌 Trennen', fn: disconnectDrive }
-  ];
-  // Einfaches Popup
-  const msg = actions.map((a,i) => `${i+1}. ${a.label}`).join('\n');
-  const choice = prompt(`Google Drive:\n\n${msg}\n\nZahl eingeben:`);
-  const idx = parseInt(choice) - 1;
-  if (idx >= 0 && idx < actions.length) actions[idx].fn();
-}
-
-function disconnectDrive() {
-  driveAccessToken = null;
-  driveFileId = null;
-  document.getElementById('driveBtn').classList.remove('connected');
-  document.getElementById('driveBtnIcon').textContent = '☁️';
-  document.getElementById('driveBtnText').textContent = 'Drive';
-}
-
-async function saveToDrive() {
-  if (!driveAccessToken) return;
-  setDriveStatus('💾 Speichern…');
-  const data = {
-    ad_weightLog: load('ad_weightLog', []),
-    ad_dayLogs: load('ad_dayLogs', {}),
-    ad_recipes: load('ad_recipes', []),
-    ad_settings: load('ad_settings', {}),
-    savedAt: new Date().toISOString()
-  };
-  const body = JSON.stringify(data);
-  try {
-    if (!driveFileId) driveFileId = await findDriveFile();
-    if (driveFileId) {
-      // Update
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
-        body
-      });
-    } else {
-      // Create
-      const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: DRIVE_FILE_NAME })
-      }).then(r => r.json());
-      driveFileId = meta.id;
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
-        body
-      });
-    }
-    setDriveStatus('✅ Gespeichert');
-    setTimeout(() => setDriveStatus(null), 3000);
-  } catch(e) {
-    setDriveStatus('❌ Fehler');
-    setTimeout(() => setDriveStatus(null), 4000);
-  }
-}
-
-async function loadFromDrive() {
-  if (!driveAccessToken) return;
-  setDriveStatus('⬇️ Laden…');
-  try {
-    if (!driveFileId) driveFileId = await findDriveFile();
-    if (!driveFileId) { setDriveStatus(null); return; }
-    const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
-      headers: { 'Authorization': `Bearer ${driveAccessToken}` }
-    });
-    const data = await resp.json();
-    if (data.ad_weightLog) localStorage.setItem('ad_weightLog', JSON.stringify(data.ad_weightLog));
-    if (data.ad_dayLogs)   localStorage.setItem('ad_dayLogs',   JSON.stringify(data.ad_dayLogs));
-    if (data.ad_recipes)   localStorage.setItem('ad_recipes',   JSON.stringify(data.ad_recipes));
-    if (data.ad_settings)  localStorage.setItem('ad_settings',  JSON.stringify(data.ad_settings));
-    weightLog = load('ad_weightLog', []);
-    dayLogs   = load('ad_dayLogs', {});
-    recipes   = load('ad_recipes', []);
-    settings  = load('ad_settings', { height:'160', goalWeight:'', age:'55', weight:'84' });
-    renderWeightHistory();
-    renderDay();
-    renderRecipes();
-    document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
-    setDriveStatus('✅ Geladen');
-    setTimeout(() => setDriveStatus(null), 3000);
-  } catch(e) {
-    setDriveStatus('❌ Fehler');
-    setTimeout(() => setDriveStatus(null), 4000);
-  }
-}
-
-async function findDriveFile() {
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D'${DRIVE_FILE_NAME}'%20and%20trashed%3Dfalse&fields=files(id)`, {
-    headers: { 'Authorization': `Bearer ${driveAccessToken}` }
-  });
-  const data = await resp.json();
-  return data.files && data.files.length ? data.files[0].id : null;
-}
-
-function setDriveStatus(msg) {
-  const btn = document.getElementById('driveBtnText');
-  if (!btn) return;
-  if (msg) {
-    btn.textContent = msg;
-  } else {
-    btn.textContent = driveAccessToken ? 'Sync' : 'Drive';
-  }
 }
 
 // ===== EXPORT / IMPORT =====
