@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2d7a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Abnahme">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<title>Abnahme Tagebuch – Alexandra</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    color-scheme: light;
+    --green: #2d7a4f;
+    --green-light: #e8f5ee;
+    --green-mid: #4caf7d;
+    --orange: #e07b39;
+    --red: #d64040;
+    --gray: #6b7280;
+    --gray-light: #f3f4f6;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f1; color: var(--text); font-size: 14px; }
+
+  header {
+    background: var(--green);
+    color: white;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  header h1 { font-size: 18px; font-weight: 700; }
+  header span { font-size: 13px; opacity: 0.85; margin-left: auto; }
+  #driveBtn {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  #driveBtn:hover { background: rgba(255,255,255,0.28); }
+  #driveBtn.connected { background: rgba(255,255,255,0.25); }
+  #syncStatus { font-size: 11px; opacity: 0.8; }
+
+  nav {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--border);
+    overflow-x: auto;
+  }
+  nav button {
+    padding: 12px 18px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray);
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  nav button.active { color: var(--green); border-bottom-color: var(--green); }
+  nav button:hover:not(.active) { color: var(--text); background: var(--gray-light); }
+
+  main { padding: 16px; max-width: 900px; margin: 0 auto; }
+
+  .tab { display: none; }
+  .tab.active { display: block; }
+
+  .card {
+    background: white;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+  }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--green); display: flex; align-items: center; gap: 6px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  label { display: block; font-size: 12px; color: var(--gray); margin-bottom: 4px; font-weight: 500; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; color: var(--text);
+    background: white; transition: border 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green-mid); }
+  textarea { resize: vertical; min-height: 70px; }
+
+  .btn {
+    padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--green); color: white; }
+  .btn-primary:hover { background: #245f3d; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-orange { background: var(--orange); color: white; }
+  .btn-gray { background: var(--gray-light); color: var(--text); border: 1px solid var(--border); }
+
+  .stat-box {
+    background: var(--green-light);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-box .val { font-size: 26px; font-weight: 800; color: var(--green); }
+  .stat-box .lbl { font-size: 11px; color: var(--gray); margin-top: 2px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; background: var(--gray-light); font-weight: 600; font-size: 12px; color: var(--gray); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-orange { background: #fef3e8; color: var(--orange); }
+  .badge-red { background: #fde8e8; color: var(--red); }
+
+  .progress-bar { background: var(--border); border-radius: 20px; height: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 20px; background: var(--green); transition: width 0.5s; }
+
+  .cal-summary {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--gray-light); border-radius: 8px; padding: 12px;
+  }
+  .cal-num { font-size: 22px; font-weight: 800; }
+  .cal-num.over { color: var(--red); }
+  .cal-num.ok { color: var(--green); }
+
+  .entry-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    background: var(--gray-light); border-radius: 6px; padding: 8px 10px;
+  }
+  .entry-row .name { flex: 1; font-weight: 500; }
+  .entry-row .cal { color: var(--orange); font-weight: 700; min-width: 60px; text-align: right; }
+
+  .recipe-card {
+    border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .recipe-card:hover { border-color: var(--green-mid); box-shadow: 0 2px 8px rgba(45,122,79,0.1); }
+  .recipe-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .recipe-card .meta { font-size: 12px; color: var(--gray); }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 12px; padding: 22px;
+    max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  }
+  .modal h2 { font-size: 16px; margin-bottom: 16px; color: var(--green); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+  .empty-state { text-align: center; padding: 30px; color: var(--gray); }
+  .empty-state .icon { font-size: 36px; margin-bottom: 8px; }
+
+  .form-row { margin-bottom: 12px; }
+  .form-row-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+
+  .trend-up { color: var(--red); }
+  .trend-down { color: var(--green); }
+
+  #weightChart { max-height: 220px; }
+
+  .search-box { position: relative; margin-bottom: 12px; }
+  .search-box input { padding-left: 32px; }
+  .search-box::before { content: '🔍'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; }
+
+  .cat-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .cat-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 12px; font-weight: 500; }
+  .cat-btn.active { background: var(--green); color: white; border-color: var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:22px">🥗</span>
+  <h1>Abnahme Tagebuch</h1>
+  <span id="headerDate"></span>
+  <button id="driveBtn" onclick="driveAction()" title="Google Drive Sync">
+    <span id="driveBtnIcon">☁️</span>
+    <span id="driveBtnText">Drive</span>
+  </button>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('gewicht')">⚖️ Gewicht & Maße</button>
+  <button onclick="showTab('tag')">📋 Tagesprotokoll</button>
+  <button onclick="showTab('rezepte')">🍽️ Rezepte</button>
+  <button onclick="showTab('verlauf')">📈 Verlauf</button>
+  <button onclick="showTab('tipps')">💡 Strategie</button>
+</nav>
+
+<main>
+
+<!-- ===== TAB: GEWICHT ===== -->
+<div class="tab active" id="tab-gewicht">
+
+  <div class="card">
+    <h2>📝 Eintrag hinzufügen</h2>
+    <div class="grid3">
+      <div class="form-row">
+        <label>Datum</label>
+        <input type="date" id="w-date">
+      </div>
+      <div class="form-row">
+        <label>Gewicht (kg)</label>
+        <input type="number" id="w-weight" step="0.1" placeholder="z.B. 78.5">
+      </div>
+      <div class="form-row">
+        <label>Bauchumfang (cm)</label>
+        <input type="number" id="w-waist" step="0.5" placeholder="z.B. 92">
+      </div>
+      <div class="form-row">
+        <label>Hüftumfang (cm)</label>
+        <input type="number" id="w-hip" step="0.5" placeholder="z.B. 100">
+      </div>
+      <div class="form-row">
+        <label>Körpergröße (cm)</label>
+        <input type="number" id="w-height" placeholder="z.B. 168" onchange="saveHeight()">
+      </div>
+      <div class="form-row" style="display:flex;align-items:flex-end">
+        <button class="btn btn-primary" style="width:100%" onclick="addWeightEntry()">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>📊 Aktuell</h2>
+      <div id="currentStats">
+        <div class="empty-state"><div class="icon">⚖️</div><p>Noch kein Eintrag</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🎯 Ziel & Tagesverbrauch</h2>
+      <div class="form-row">
+        <label>Zielgewicht (kg)</label>
+        <input type="number" id="goal-weight" step="0.1" placeholder="z.B. 68.0" oninput="saveGoal()">
+      </div>
+      <div class="form-row-inline" style="margin-top:8px">
+        <div>
+          <label>Alter (Jahre)</label>
+          <input type="number" id="s-age" placeholder="z.B. 55" oninput="saveAge()">
+        </div>
+        <div>
+          <label>Tagesverbrauch (ca.)</label>
+          <input type="text" id="bmr-display" readonly style="background:var(--green-light);color:var(--green);font-weight:700;cursor:default">
+        </div>
+      </div>
+      <div id="goalProgress" style="margin-top:10px"></div>
+      <div style="margin-top:12px;padding:10px;background:#eef2ff;border-radius:7px;font-size:12px;color:#3b5bdb;line-height:1.6">
+        💡 <b>Tagesverbrauch erklärt:</b> Berechnet mit Mifflin-St Jeor × 1,2 (sitzende Tätigkeit). Das ist der geschätzte Kalorienverbrauch für deinen normalen Alltag ohne extra Sport. Isst du darunter, machst du ein Defizit – Sport obendrauf rechnet das Dashboard extra dazu.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📅 Verlauf</h2>
+    <div id="weightTable">
+      <div class="empty-state"><div class="icon">📋</div><p>Noch keine Einträge</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAB: TAGESPROTOKOLL ===== -->
+<div class="tab" id="tab-tag">
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <h2 style="margin:0">📋 Tag</h2>
+      <input type="date" id="log-date" style="max-width:160px" onchange="loadDayLog()">
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn btn-gray btn-sm" onclick="changeDay(-1)">◀</button>
+        <button class="btn btn-gray btn-sm" onclick="changeDay(1)">▶</button>
+      </div>
+    </div>
+    <div id="calSummary"></div>
+  </div>
+
+  <div class="grid2">
+    <!-- Mahlzeiten -->
+    <div class="card">
+      <h2>🍴 Mahlzeiten</h2>
+      <div id="mealList"></div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <input type="text" id="meal-name" placeholder="Mahlzeit (z.B. Hähnchenbrust)" style="flex:1">
+        <input type="number" id="meal-cal" placeholder="kcal" style="max-width:72px">
+        <button class="btn btn-primary btn-sm" onclick="addMeal()">+</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-top:6px">
+        <div><label style="font-size:10px">Protein g</label><input type="number" id="meal-protein" placeholder="–" style="font-size:12px;padding:5px 6px"></div>
+        <div><label style="font-size:10px">KH g</label><input type="number" id="meal-carbs" placeholder="–" style="font-size:12px;padding:5px 6px"></div>
+        <div><label style="font-size:10px">Fett g</label><input type="number" id="meal-fat" placeholder="–" style="font-size:12px;padding:5px 6px"></div>
+        <div><label style="font-size:10px">Zucker g</label><input type="number" id="meal-sugar" placeholder="–" style="font-size:12px;padding:5px 6px"></div>
+      </div>
+      <div style="margin-top:6px">
+        <label>Mahlzeit-Kategorie</label>
+        <select id="meal-type">
+          <option>Frühstück</option>
+          <option>Mittagessen</option>
+          <option>Abendessen</option>
+          <option>Snack</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Bewegung -->
+    <div class="card">
+      <h2>🏃 Bewegung / Sport</h2>
+      <div id="sportList"></div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <input type="text" id="sport-name" placeholder="Aktivität" style="flex:1">
+        <input type="number" id="sport-min" placeholder="Min" style="max-width:60px">
+        <button class="btn btn-orange btn-sm" onclick="addSport()">+</button>
+      </div>
+      <div style="margin-top:8px">
+        <label>Aktivitätstyp</label>
+        <select id="sport-type" onchange="estimateCal()">
+          <option value="150">Spaziergang</option>
+          <option value="300">Radfahren</option>
+          <option value="400">Joggen</option>
+          <option value="250">Schwimmen</option>
+          <option value="200">Yoga / Dehnen</option>
+          <option value="350">Krafttraining</option>
+          <option value="280">Tanzen</option>
+          <option value="180">Hausarbeit</option>
+          <option value="0">Eigene Eingabe</option>
+        </select>
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:var(--gray)" id="calEstimate"></div>
+    </div>
+  </div>
+
+  <!-- Notiz -->
+  <div class="card">
+    <h2>📝 Notiz zum Tag</h2>
+    <textarea id="day-note" placeholder="Wie war der Tag? Stimmung, Besonderheiten..." rows="3" oninput="saveNote()"></textarea>
+  </div>
+</div>
+
+<!-- ===== TAB: REZEPTE ===== -->
+<div class="tab" id="tab-rezepte">
+
+  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+    <div class="search-box" style="flex:1;margin:0">
+      <input type="text" id="recipe-search" placeholder="Rezept suchen..." oninput="filterRecipes()">
+    </div>
+    <button class="btn btn-primary" onclick="openRecipeModal()">+ Neues Rezept</button>
+  </div>
+
+  <div class="cat-filter" id="catFilter">
+    <button class="cat-btn active" onclick="filterCat(this,'')">Alle</button>
+    <button class="cat-btn" onclick="filterCat(this,'Frühstück')">Frühstück</button>
+    <button class="cat-btn" onclick="filterCat(this,'Hauptgericht')">Hauptgericht</button>
+    <button class="cat-btn" onclick="filterCat(this,'Salat')">Salat</button>
+    <button class="cat-btn" onclick="filterCat(this,'Snack')">Snack</button>
+    <button class="cat-btn" onclick="filterCat(this,'Suppe')">Suppe</button>
+    <button class="cat-btn" onclick="filterCat(this,'Dessert')">Dessert</button>
+  </div>
+
+  <div id="recipeGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+</div>
+
+<!-- ===== TAB: VERLAUF ===== -->
+<div class="tab" id="tab-verlauf">
+
+  <div class="card">
+    <h2>📈 Gewichtsverlauf</h2>
+    <canvas id="weightChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>🔥 Kalorien (letzte 7 Tage)</h2>
+    <canvas id="calChart" style="max-height:200px"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>📊 Zusammenfassung</h2>
+    <div id="statsOverview"></div>
+  </div>
+</div>
+
+<!-- ===== TAB: STRATEGIE ===== -->
+<div class="tab" id="tab-tipps">
+
+  <div class="card">
+    <h2>🔄 Gesunde Alternativen – Tauschbörse</h2>
+    <table>
+      <tr><th>Das Original</th><th>kcal</th><th>Gesunde Alternative</th><th>kcal</th><th>Ersparnis</th></tr>
+      <tr><td>Butterbreze</td><td>350</td><td>Hafer-Quark-Brötchen + Hummus</td><td>185</td><td><span class="badge badge-green">−165</span></td></tr>
+      <tr><td>Weißbrot (2 Scheiben)</td><td>180</td><td>Eiweißbrot (2 Scheiben)</td><td>230</td><td><span style="font-size:12px;color:var(--gray)">mehr Protein</span></td></tr>
+      <tr><td>Weißbrot (2 Scheiben)</td><td>180</td><td>Körnerbrot (2 Scheiben)</td><td>260</td><td><span style="font-size:12px;color:var(--gray)">kaum KH</span></td></tr>
+      <tr><td>Butter (10g)</td><td>75</td><td>Hummus (1 EL)</td><td>40</td><td><span class="badge badge-green">−35</span></td></tr>
+      <tr><td>Erdbeerkuchen (120g)</td><td>250</td><td>Griech. Joghurt + Erdbeeren</td><td>110</td><td><span class="badge badge-green">−140</span></td></tr>
+      <tr><td>Nudeln (200g gekocht)</td><td>260</td><td>Zucchini-Nudeln (Zoodles)</td><td>30</td><td><span class="badge badge-green">−230</span></td></tr>
+      <tr><td>Pommes (150g)</td><td>400</td><td>Ofenkartoffelwedges</td><td>160</td><td><span class="badge badge-green">−240</span></td></tr>
+      <tr><td>Sahne (100ml)</td><td>300</td><td>Magerquark (100g)</td><td>65</td><td><span class="badge badge-green">−235</span></td></tr>
+      <tr><td>Mayonnaise (1 EL)</td><td>90</td><td>Naturjoghurt (1 EL)</td><td>10</td><td><span class="badge badge-green">−80</span></td></tr>
+      <tr><td>Chips (50g)</td><td>260</td><td>Gemüsesticks + Hummus</td><td>100</td><td><span class="badge badge-green">−160</span></td></tr>
+      <tr><td>Schokoriegel</td><td>230</td><td>Quark-Energieball (3 Stück)</td><td>120</td><td><span class="badge badge-green">−110</span></td></tr>
+      <tr><td>Cola (330ml)</td><td>140</td><td>Mineralwasser + Zitrone</td><td>5</td><td><span class="badge badge-green">−135</span></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>🧠 Grundstrategie – Die 5 Hebel</h2>
+    <div style="display:grid;gap:10px">
+      <div style="background:var(--green-light);border-radius:8px;padding:14px;border-left:4px solid var(--green)">
+        <b style="color:var(--green)">1. Protein rauf</b>
+        <p style="margin-top:4px;font-size:13px;line-height:1.6">Mehr Protein = länger satt = weniger Hunger = weniger essen. Ziel: <b>mind. 80–100g Protein täglich.</b> Quellen: Skyr, Quark, Eier, Hülsenfrüchte, Putenbrust, Hähnchen.</p>
+      </div>
+      <div style="background:#fff8f0;border-radius:8px;padding:14px;border-left:4px solid var(--orange)">
+        <b style="color:var(--orange)">2. Weißmehl &amp; Zucker reduzieren</b>
+        <p style="margin-top:4px;font-size:13px;line-height:1.6">Weißmehlprodukte lassen Blutzucker schnell steigen und fallen → Heißhunger. Tausch: Haferflocken-Brötchen, Eiweißbrot, Körnerbrot. Zucker in Joghurt, Fertigprodukten checken.</p>
+      </div>
+      <div style="background:#eef2ff;border-radius:8px;padding:14px;border-left:4px solid #3b5bdb">
+        <b style="color:#3b5bdb">3. Volumen essen</b>
+        <p style="margin-top:4px;font-size:13px;line-height:1.6">Viel Volumen, wenig Kalorien: Gemüse, Suppen, Salate. Eine große Schüssel Gemüse = 50 kcal. Trinken vor dem Essen (300ml Wasser) = weniger Hunger.</p>
+      </div>
+      <div style="background:#fdf3f3;border-radius:8px;padding:14px;border-left:4px solid var(--red)">
+        <b style="color:var(--red)">4. Defizit realistisch halten</b>
+        <p style="margin-top:4px;font-size:13px;line-height:1.6">Dein Tagesverbrauch: ca. 1.685 kcal (sitzende Tätigkeit). Defizit von 300–500 kcal/Tag = 0,3–0,5 kg Verlust pro Woche. <b>Nicht unter 1.200 kcal essen</b> – sonst Muskelabbau und Jojo.</p>
+      </div>
+      <div style="background:#f5f0fa;border-radius:8px;padding:14px;border-left:4px solid #7c4dbe">
+        <b style="color:#7c4dbe">5. Meal Prep &amp; Planung</b>
+        <p style="margin-top:4px;font-size:13px;line-height:1.6">Linsensuppe, Curry, Haferbrei – alles lässt sich vorkochen. Wer vorgekochtes hat, greift nicht zur Butterbreze. Sonntags 1–2h kochen = ganze Woche abgesichert.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📅 Musterwoche – Beispielplanung</h2>
+    <table>
+      <tr><th>Tag</th><th>Frühstück</th><th>Mittagessen</th><th>Abendessen</th><th>~kcal</th></tr>
+      <tr><td>Mo</td><td>Overnight Oats</td><td>Rote Linsensuppe</td><td>Putenbrust + Gemüse</td><td>975</td></tr>
+      <tr><td>Di</td><td>Hafer-Pfannkuchen</td><td>Kichererbsen-Salat</td><td>Hackfleisch-Zucchini</td><td>1.085</td></tr>
+      <tr><td>Mi</td><td>Eiweißbrot + Hummus</td><td>Rote-Rüben-Suppe</td><td>Hähnchenpfanne asiatisch</td><td>865</td></tr>
+      <tr><td>Do</td><td>Joghurt-Skyr-Bowl</td><td>Linsen-Bolognese</td><td>Warmer Linsensalat</td><td>1.065</td></tr>
+      <tr><td>Fr</td><td>Herzhafter Haferbrei</td><td>Kichererbsen-Curry</td><td>Rote-Rüben-Quinoa-Bowl</td><td>1.060</td></tr>
+      <tr><td>Sa</td><td>Hafer-Quark-Brötchen</td><td>Rote-Rüben-Salat</td><td>Hähnchenpfanne</td><td>870</td></tr>
+      <tr><td>So</td><td>Overnight Oats</td><td>Linsensuppe</td><td>Hackfleisch-Zucchini</td><td>1.035</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--gray);margin-top:8px">Snacks (Hafer-Apfel-Puffer, Hummus+Gemüse) nach Bedarf dazurechnen. Mit Tagesverbrauch ~1.685 kcal = durchschnittlich ~400–500 kcal Defizit täglich → ~1,5 kg/Monat.</p>
+  </div>
+
+</div>
+
+</main>
+
+<!-- ===== REZEPT MODAL ===== -->
+<div class="modal-overlay" id="recipeModal">
+  <div class="modal">
+    <h2 id="modalTitle">Neues Rezept</h2>
+    <input type="hidden" id="recipe-edit-id">
+    <div class="form-row-inline">
+      <div>
+        <label>Name *</label>
+        <input type="text" id="r-name" placeholder="Rezeptname">
+      </div>
+      <div>
+        <label>Kategorie</label>
+        <select id="r-cat">
+          <option>Frühstück</option>
+          <option>Hauptgericht</option>
+          <option>Salat</option>
+          <option>Snack</option>
+          <option>Suppe</option>
+          <option>Dessert</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row-inline">
+      <div>
+        <label>Kalorien (kcal pro Portion) *</label>
+        <input type="number" id="r-cal" placeholder="z.B. 380">
+      </div>
+      <div>
+        <label>Portionen</label>
+        <input type="number" id="r-portions" placeholder="1" value="1">
+      </div>
+    </div>
+    <div class="form-row-inline">
+      <div>
+        <label>Protein (g)</label>
+        <input type="number" id="r-protein" placeholder="z.B. 28">
+      </div>
+      <div>
+        <label>Kohlenhydrate (g)</label>
+        <input type="number" id="r-carbs" placeholder="z.B. 30">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Fett (g)</label>
+      <input type="number" id="r-fat" placeholder="z.B. 12">
+    </div>
+    <div class="form-row">
+      <label>Zutaten</label>
+      <textarea id="r-ingredients" placeholder="Eine Zeile pro Zutat&#10;z.B. 200g Hähnchenbrust&#10;1 Paprika"></textarea>
+    </div>
+    <div class="form-row">
+      <label>Zubereitung</label>
+      <textarea id="r-instructions" placeholder="Schritt für Schritt..."></textarea>
+    </div>
+    <div class="form-row">
+      <label>Notizen (z.B. Varianten, Tipps)</label>
+      <textarea id="r-notes" placeholder="Tipps, Varianten..." rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeRecipeModal()">Abbrechen</button>
+      <button class="btn btn-danger btn-sm" id="deleteRecipeBtn" onclick="deleteRecipe()" style="display:none">Löschen</button>
+      <button class="btn btn-primary" onclick="saveRecipe()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REZEPT DETAIL MODAL ===== -->
+<div class="modal-overlay" id="recipeDetailModal">
+  <div class="modal">
+    <div id="recipeDetailContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeDetailModal()">Schließen</button>
+      <button class="btn btn-orange btn-sm" id="addToLogBtn" onclick="addRecipeToLog()">Zum Tagesprotokoll</button>
+      <button class="btn btn-primary btn-sm" onclick="editCurrentRecipe()">Bearbeiten</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+function load(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; }
+}
+function save(key, val) {
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
+let weightLog = load('ad_weightLog', []);
+let dayLogs = load('ad_dayLogs', {});
+let recipes = load('ad_recipes', getSampleRecipes());
+let settings = load('ad_settings', { height: '160', goalWeight: '', age: '55', weight: '84' });
+let currentRecipeId = null;
+let currentCat = '';
+let weightChart = null, calChart = null;
+
+// ===== INJECT TODAY'S ENTRIES =====
+function injectTodayEntries() {
+  const today = new Date().toISOString().split('T')[0];
+  const seedKey = 'ad_seeded_2026-05-15_v1';
+  if (localStorage.getItem(seedKey)) return;
+
+  if (!dayLogs[today]) dayLogs[today] = { meals: [], sport: [], note: '' };
+  const day = dayLogs[today];
+
+  const entriesToAdd = [
+    { name: 'Butterbreze', cal: 350, type: 'Frühstück', id: 1000001 },
+    { name: '2x Kaffee mit Milch (80ml)', cal: 86, type: 'Frühstück', id: 1000002 },
+    { name: 'Joghurt-Skyr-Bowl mit Erdbeeren', cal: 355, type: 'Mittagessen', id: 1000003 },
+    { name: 'Kaffee mit Milch (80ml)', cal: 43, type: 'Snack', id: 1000004 },
+    { name: 'Erdbeerkuchen', cal: 250, type: 'Snack', id: 1000005 },
+  ];
+
+  entriesToAdd.forEach(e => {
+    if (!day.meals.find(m => m.id === e.id)) day.meals.push(e);
+  });
+
+  save('ad_dayLogs', dayLogs);
+  localStorage.setItem(seedKey, '1');
+}
+
+// ===== INJECT MACROS FOR TODAY'S SEEDED ENTRIES =====
+function injectTodayMacros() {
+  const today = new Date().toISOString().split('T')[0];
+  const macroSeedKey = 'ad_seeded_2026-05-15_macros_v1';
+  if (localStorage.getItem(macroSeedKey)) return;
+  if (!dayLogs[today]) return;
+
+  const macros = {
+    1000001: { protein: 8,  carbs: 46, fat: 14, sugar: 2  }, // Butterbreze
+    1000002: { protein: 6,  carbs: 8,  fat: 2,  sugar: 8  }, // 2x Kaffee mit Milch
+    1000003: { protein: 22, carbs: 48, fat: 8,  sugar: 15 }, // Joghurt-Skyr-Bowl
+    1000004: { protein: 3,  carbs: 4,  fat: 1,  sugar: 4  }, // Kaffee mit Milch
+    1000005: { protein: 4,  carbs: 38, fat: 10, sugar: 22 }, // Erdbeerkuchen
+  };
+
+  dayLogs[today].meals = dayLogs[today].meals.map(m => {
+    if (macros[m.id]) return { ...m, ...macros[m.id] };
+    return m;
+  });
+  save('ad_dayLogs', dayLogs);
+  localStorage.setItem(macroSeedKey, '1');
+}
+
+// ===== MERGE NEW BUILT-IN RECIPES =====
+function mergeNewRecipes() {
+  const newRecipes = [
+    // ── HAFERFLOCKEN ──────────────────────────────────────────
+    {
+      id: 'builtin-overnight-oats',
+      name: 'Overnight Oats mit Banane',
+      cat: 'Frühstück', cal: 350, portions: 1,
+      protein: '12', carbs: '58', fat: '7', sugar: '22',
+      ingredients: '60g Haferflocken\n200ml Milch 1,5%\n1 kleine Banane\n1 TL Zimt\n1 TL Honig\n1 Prise Salz',
+      instructions: 'Haferflocken und Milch abends verrühren, mit Zimt und Honig würzen.\nAbgedeckt über Nacht in den Kühlschrank.\nMorgens mit Bananenscheiben toppen und genießen.',
+      notes: 'Variante: Banane durch 100g Beeren ersetzen → spart ~40 kcal und Zucker.'
+    },
+    {
+      id: 'builtin-haferbrei-herzhaft',
+      name: 'Herzhafter Haferbrei mit Ei',
+      cat: 'Frühstück', cal: 320, portions: 1,
+      protein: '16', carbs: '42', fat: '9', sugar: '2',
+      ingredients: '60g Haferflocken\n300ml Gemüsebrühe\n1 Ei\n1 EL Schnittlauch\nSalz, Pfeffer\n½ TL Paprikapulver',
+      instructions: 'Haferflocken in Brühe aufkochen, ca. 3 Min. rühren bis cremig.\nEi verquirlen und unter den Brei rühren, nochmal 1 Min. erhitzen.\nMit Schnittlauch, Salz und Pfeffer abschmecken.',
+      notes: 'Wer süßen Brei nicht mag, wird das lieben. Sättigt durch viel Protein sehr gut.'
+    },
+    {
+      id: 'builtin-hafer-pfannkuchen',
+      name: 'Haferflocken-Pfannkuchen',
+      cat: 'Frühstück', cal: 370, portions: 1,
+      protein: '18', carbs: '44', fat: '12', sugar: '4',
+      ingredients: '80g Haferflocken (fein gemahlen oder Blitzhaferflocken)\n2 Eier\n100ml Milch 1,5%\n1 TL Backpulver\n1 Prise Salz\n½ TL Vanille',
+      instructions: 'Haferflocken fein mahlen (Blender oder Kaffeemühle).\nAlle Zutaten verrühren, 5 Min. quellen lassen.\nPortionsweise in beschichteter Pfanne ohne Fett backen.\nMit Beeren oder 1 EL Naturjoghurt servieren.',
+      notes: 'Glutenfrei wenn zertifizierte GF-Haferflocken verwendet werden. Ergibt ca. 4 kleine Pfannkuchen.'
+    },
+    {
+      id: 'builtin-hafer-puffer',
+      name: 'Hafer-Apfel-Puffer',
+      cat: 'Snack', cal: 275, portions: 1,
+      protein: '8', carbs: '40', fat: '7', sugar: '14',
+      ingredients: '50g Haferflocken\n1 kleiner Apfel (gerieben)\n1 Ei\n½ TL Zimt\n1 TL Öl zum Braten',
+      instructions: 'Apfel grob reiben, mit Haferflocken, Ei und Zimt verrühren.\n10 Min. quellen lassen.\nKleine Puffer formen, in wenig Öl je 3 Min. pro Seite braten.',
+      notes: 'Funktioniert auch mit geriebenem Zucchini statt Apfel → noch kalorienärmer (~230 kcal).'
+    },
+    // ── ROTE RÜBEN ────────────────────────────────────────────
+    {
+      id: 'builtin-rote-rueben-salat',
+      name: 'Rote-Rüben-Salat mit Walnüssen',
+      cat: 'Salat', cal: 255, portions: 1,
+      protein: '7', carbs: '18', fat: '17', sugar: '12',
+      ingredients: '200g rote Rüben (vorgekocht)\n30g Walnüsse\n80g Feldsalat\n1 TL Apfelessig\n1 TL Olivenöl\nSalz, Pfeffer, 1 Prise Kümmel\nOptional: 30g Ziegenkäse',
+      instructions: 'Rote Rüben in Scheiben oder Würfel schneiden.\nFeldsalat waschen und trockenschleudern.\nDressing aus Essig, Öl, Salz, Pfeffer und Kümmel mischen.\nAlles anrichten, Walnüsse darüber streuen.',
+      notes: 'Mit Ziegenkäse: +60 kcal. Rote Rüben sind echte Entzündungshemmer – ideal für Gelenke.'
+    },
+    {
+      id: 'builtin-rote-rueben-suppe',
+      name: 'Rote-Rüben-Suppe',
+      cat: 'Suppe', cal: 185, portions: 2,
+      protein: '5', carbs: '32', fat: '3', sugar: '14',
+      ingredients: '300g rote Rüben (roh oder vorgekocht)\n1 mittelgroße Kartoffel\n1 Zwiebel\n2 Knoblauchzehen\n600ml Gemüsebrühe\n1 TL Kümmel\n2 EL Naturjoghurt\nSalz, Pfeffer, Apfelessig',
+      instructions: 'Zwiebel und Knoblauch andünsten.\nRote Rüben und Kartoffel würfeln, dazugeben.\nBrühe aufgießen, 20 Min. köcheln lassen.\nPürieren, mit Kümmel und einem Spritzer Essig abschmecken.\nMit 1 EL Joghurt servieren.',
+      notes: 'Ergibt 2 Portionen. Tiefkühlgeeignet. Tipp: 1 TL Meerrettich rein → bringt Schärfe und kurbelt Stoffwechsel an.'
+    },
+    {
+      id: 'builtin-rote-rueben-wrap',
+      name: 'Rote-Rüben-Quinoa-Bowl',
+      cat: 'Hauptgericht', cal: 390, portions: 1,
+      protein: '14', carbs: '58', fat: '10', sugar: '10',
+      ingredients: '80g Quinoa (roh)\n150g rote Rüben (vorgekocht, gewürfelt)\n1 Hand Rucola\n2 EL Kürbiskerne\n1 TL Olivenöl\n1 TL Balsamico\n30g Feta\nSalz, Pfeffer',
+      instructions: 'Quinoa nach Packungsanleitung kochen (ca. 15 Min.).\nRote Rüben, Rucola und Kürbiskerne darüber.\nMit Öl und Balsamico beträufeln.\nFeta darüber bröckeln.',
+      notes: 'Quinoa enthält alle 8 essentiellen Aminosäuren – super Pflanzeneiweiß.'
+    },
+    // ── KICHERERBSEN ──────────────────────────────────────────
+    {
+      id: 'builtin-kichererbsen-curry',
+      name: 'Kichererbsen-Gemüse-Curry',
+      cat: 'Hauptgericht', cal: 360, portions: 2,
+      protein: '14', carbs: '42', fat: '12', sugar: '8',
+      ingredients: '1 Dose Kichererbsen (400g, abgetropft)\n1 Dose Tomaten\n150ml Kokosmilch light\n200g Blattspinat\n1 Zwiebel\n2 Knoblauchzehen\n1 TL Currypulver\n1 TL Kurkuma\nSalz, Pfeffer',
+      instructions: 'Zwiebel und Knoblauch andünsten.\nCurry und Kurkuma kurz mitrösten.\nKichererbsen, Tomaten und Kokosmilch dazugeben.\n15 Min. köcheln lassen.\nSpinat unterrühren, bis er zusammenfällt.\nAbschmecken.',
+      notes: '2 Portionen. Dazu passt 50g Basmatireis (+175 kcal). Einfrieren klappt prima.'
+    },
+    {
+      id: 'builtin-kichererbsen-salat',
+      name: 'Kichererbsen-Salat mediterran',
+      cat: 'Salat', cal: 340, portions: 1,
+      protein: '14', carbs: '32', fat: '16', sugar: '6',
+      ingredients: '200g Kichererbsen (Dose, abgetropft)\n½ Gurke\n2 Tomaten\n50g Feta\n½ rote Zwiebel\n1 EL Olivenöl\nSaft ½ Zitrone\nPetersilie\nSalz, Pfeffer, Oregano',
+      instructions: 'Kichererbsen abspülen und abtropfen lassen.\nGemüse würfeln, alles vermischen.\nDressing aus Öl, Zitronensaft und Gewürzen anrühren.\nFeta darüber bröckeln.',
+      notes: 'Hält sich 2 Tage im Kühlschrank – gut vorzubereiten. Proteinreich und sättigend.'
+    },
+    {
+      id: 'builtin-hummus',
+      name: 'Hummus selbstgemacht',
+      cat: 'Snack', cal: 160, portions: 1,
+      protein: '8', carbs: '16', fat: '7', sugar: '2',
+      ingredients: '200g Kichererbsen (Dose)\n2 EL Tahini (Sesampaste)\nSaft 1 Zitrone\n1 Knoblauchzehe\n2 EL Wasser\nSalz, Paprikapulver, 1 TL Olivenöl',
+      instructions: 'Kichererbsen abspülen, mit allen Zutaten im Mixer cremig pürieren.\nBei Bedarf mehr Wasser für gewünschte Konsistenz.\nMit Paprika und Öl beträufeln servieren.',
+      notes: 'Perfekter Brotaufstrich statt Butter (spart ~60 kcal/EL). Hält 5 Tage im Kühlschrank.'
+    },
+    // ── LINSEN ────────────────────────────────────────────────
+    {
+      id: 'builtin-linsen-suppe',
+      name: 'Rote Linsensuppe',
+      cat: 'Suppe', cal: 280, portions: 2,
+      protein: '16', carbs: '44', fat: '3', sugar: '6',
+      ingredients: '150g rote Linsen\n1 Karotte\n1 Zwiebel\n2 Knoblauchzehen\n1 Dose Tomaten (400g)\n800ml Gemüsebrühe\n1 TL Kreuzkümmel\n1 TL Kurkuma\nSalz, Pfeffer\nSaft ½ Zitrone',
+      instructions: 'Zwiebel und Knoblauch anbraten.\nLinsen und Karotte dazugeben.\nTomaten und Brühe aufgießen, 20 Min. köcheln.\nHälfte pürieren für cremige Konsistenz.\nMit Kreuzkümmel, Kurkuma und Zitrone abschmecken.',
+      notes: '2 Portionen. Günstig, schnell, sättigend. Linsen brauchen kein Einweichen!'
+    },
+    {
+      id: 'builtin-linsen-bolognese',
+      name: 'Linsen-Bolognese',
+      cat: 'Hauptgericht', cal: 420, portions: 2,
+      protein: '20', carbs: '66', fat: '5', sugar: '8',
+      ingredients: '150g Tellerlinsen (grün oder braun)\n1 Dose Tomaten\n1 Karotte\n1 Stange Sellerie\n1 Zwiebel\n2 Knoblauchzehen\n1 TL Olivenöl\nOregano, Basilikum, Salz\n80g Vollkornnudeln p.P.',
+      instructions: 'Linsen nach Packung vorkochen (ca. 20 Min.).\nGemüse fein würfeln und andünsten.\nTomaten und Linsen dazugeben, 15 Min. einköcheln.\nParallel Nudeln kochen.\nMit Nudeln servieren.',
+      notes: 'Idealer Fleischersatz – kaum Fett, viel Protein und Ballaststoffe. Schmeckt auch kalt.'
+    },
+    {
+      id: 'builtin-linsen-salat',
+      name: 'Warmer Linsensalat mit Paprika',
+      cat: 'Hauptgericht', cal: 310, portions: 1,
+      protein: '18', carbs: '44', fat: '5', sugar: '8',
+      ingredients: '150g Linsen (gekocht, z.B. aus Dose)\n1 rote Paprika\n½ rote Zwiebel\n1 Hand Babyspinat\n1 TL Balsamico\n1 TL Olivenöl\nSalz, Pfeffer, Petersilie',
+      instructions: 'Paprika würfeln und kurz in der Pfanne anrösten.\nLinsen dazugeben und erwärmen.\nVom Herd, Spinat und Zwiebel untermischen.\nMit Balsamico und Öl abschmecken.',
+      notes: 'Auch kalt als Meal-Prep-Salat 2 Tage haltbar. Sehr einfach und schnell.'
+    },
+    // ── FLEISCH ───────────────────────────────────────────────
+    {
+      id: 'builtin-putenbrust-gemüse',
+      name: 'Putenbrust mit Gemüsepfanne',
+      cat: 'Hauptgericht', cal: 295, portions: 1,
+      protein: '40', carbs: '12', fat: '7', sugar: '6',
+      ingredients: '200g Putenbrust\n150g Brokkoli\n1 Paprika\n1 Zucchini\n1 TL Olivenöl\nKnoblauch, Salz, Pfeffer, Paprikapulver\nSaft ½ Zitrone',
+      instructions: 'Pute in Streifen schneiden, würzen.\nIn Pfanne mit Öl scharf anbraten (je 3 Min.), herausnehmen.\nGemüse im selben Fett bissfest braten.\nPute wieder dazu, Zitronensaft drüber.',
+      notes: 'Putenbrustfilet ist das magerste Fleisch überhaupt – ideal bei Abnahme.'
+    },
+    {
+      id: 'builtin-haehnchen-asian',
+      name: 'Asiatische Hähnchenpfanne',
+      cat: 'Hauptgericht', cal: 320, portions: 1,
+      protein: '38', carbs: '14', fat: '9', sugar: '5',
+      ingredients: '180g Hähnchenbrust\n200g Gemüse (Pak Choi, Karotte, Paprika)\n2 EL Sojasauce (light)\n1 TL Sesamöl\n1 TL Ingwer (frisch gerieben)\n1 Knoblauchzehe\n1 TL Speisestärke\n50ml Wasser',
+      instructions: 'Hähnchen in dünne Streifen schneiden.\nMarinade aus Soja, Sesamöl, Ingwer, Knoblauch mischen.\nHähnchen 10 Min. marinieren.\nScharf anbraten, Gemüse dazu, Stärke mit Wasser einrühren.\nAlles schwenken bis Sauce bindet.',
+      notes: 'Dazu passen 50g Basmatireis (+175 kcal) oder Reisnudeln. Sesamöl sparsam – intensiv im Geschmack.'
+    },
+    {
+      id: 'builtin-hack-zucchini',
+      name: 'Hackfleisch-Zucchini-Pfanne',
+      cat: 'Hauptgericht', cal: 375, portions: 1,
+      protein: '32', carbs: '12', fat: '20', sugar: '8',
+      ingredients: '200g Rinderhack (mager, 5% Fett)\n2 Zucchini\n1 Dose Tomaten (200g)\n1 Zwiebel\n2 Knoblauchzehen\nOregano, Basilikum, Salz, Pfeffer',
+      instructions: 'Zwiebel und Knoblauch anbraten.\nHack dazugeben, krümelig braten.\nZucchini in Scheiben dazugeben.\nTomaten aufgießen, 10 Min. köcheln.\nKräftig würzen.',
+      notes: 'Mageres Rinderhack (5% Fett) bestellen oder beim Metzger fragen. Zucchini ersetzt hier die Pasta – spart ~200 kcal.'
+    },
+    // ── BROT / BRÖTCHEN ───────────────────────────────────────
+    {
+      id: 'builtin-eiweissbrot',
+      name: 'Eiweißbrot (Low Carb)',
+      cat: 'Frühstück', cal: 115, portions: 1,
+      protein: '9', carbs: '8', fat: '5', sugar: '1',
+      ingredients: 'Für 12 Scheiben:\n250g Magerquark\n4 Eier\n100g Haferflocken\n50g Leinsamen geschrotet\n50g Sonnenblumenkerne\n1 Päckchen Backpulver\n1 TL Salz\n1 TL Flohsamenschalen',
+      instructions: 'Backofen auf 180°C vorheizen.\nQuark, Eier und Salz verrühren.\nTrockene Zutaten unterrühren, 5 Min. quellen lassen.\nIn Kastenform (mit Backpapier) füllen.\n60 Min. backen. Klopftest – hohl = fertig.\nAuf Rost auskühlen lassen.',
+      notes: 'Pro Scheibe ca. 115 kcal. Einfrieren: in Scheiben schneiden, einfrieren, morgens direkt toasten. Hält 3 Tage.'
+    },
+    {
+      id: 'builtin-hafer-broetchen',
+      name: 'Hafer-Quark-Brötchen',
+      cat: 'Frühstück', cal: 155, portions: 1,
+      protein: '10', carbs: '14', fat: '5', sugar: '2',
+      ingredients: 'Für 6 Stück:\n250g Magerquark\n4 Eier\n150g Haferflocken\n1 Päckchen Backpulver\n1 TL Salz\nSesam oder Sonnenblumenkerne zum Bestreuen',
+      instructions: 'Backofen auf 200°C vorheizen.\nAlle Zutaten verrühren, 5 Min. quellen lassen.\nMit feuchten Händen 6 Brötchen formen, auf Backpapier setzen.\nMit Kernen bestreuen.\n25–30 Min. backen bis goldbraun.',
+      notes: '6 Brötchen, je 155 kcal. Statt eines Semmerl (250 kcal) → 100 kcal gespart pro Stück. Ideal zum Einfrieren.'
+    },
+    {
+      id: 'builtin-koernerbrot',
+      name: 'Körnerbrot ohne Mehl',
+      cat: 'Frühstück', cal: 130, portions: 1,
+      protein: '6', carbs: '4', fat: '10', sugar: '0',
+      ingredients: 'Für 14 Scheiben:\n100g Sonnenblumenkerne\n100g Kürbiskerne\n80g Leinsamen\n50g Sesam\n3 EL Flohsamenschalen\n4 Eier\n1 TL Salz\n2 EL Olivenöl',
+      instructions: 'Backofen auf 160°C vorheizen.\nAlle trockenen Zutaten mischen.\nEier und Öl unterrühren, zu kompakter Masse verkneten.\nIn Kastenform drücken, 70 Min. backen.\nVollständig auskühlen lassen – erst dann schneiden!',
+      notes: 'Sehr kohlenhydratarm! Ideal bei Abnahme. Dicht und sättigend – 1 Scheibe reicht. Hält 1 Woche im Kühlschrank.'
+    },
+    // ── NEUE REZEPTE AUS FOTOS ────────────────────────────────
+    {
+      id: 'builtin-leichte-waffel',
+      name: 'Leichte Waffel (45 kcal/Stück)',
+      cat: 'Frühstück', cal: 45, portions: 1,
+      protein: '4', carbs: '6', fat: '1', sugar: '1',
+      ingredients: 'Für ca. 9 Waffeln:\n100g Magerquark\n70g Mehl\n3g Backpulver\n6g Vanille-Proteinpulver (z.B. Chunky Flavour)\n1 Ei\n50ml fettarme oder pflanzliche Milch',
+      instructions: 'Alle Zutaten miteinander verrühren bis ein glatter Teig entsteht.\nWaffeleisen vorheizen.\nPortion für Portion backen bis goldgelb.\nErgibt ca. 9 Waffeln à 45 kcal.',
+      notes: '📸 Rezept von @fitjini_ (TikTok). Ohne Proteinpulver: normales Vanillemark nehmen → ca. 48 kcal/Stück. Perfekt zum Einfrieren!'
+    },
+    {
+      id: 'builtin-protein-power-bowl-stefan',
+      name: 'Protein-Frühstücksmix mit Himbeersauce',
+      cat: 'Frühstück', cal: 450, portions: 1,
+      protein: '35', carbs: '25', fat: '18', sugar: '8',
+      ingredients: '40g Proteinpulver (nach Geschmack)\n20g Chiasamen\n17g Leinsamen geschrotet\n4g Flohsamenschalen\n150–180ml Mandelmilch ungezuckert\n80g Beeren nach Wahl\nFür Himbeersauce: TK-Himbeeren, Stevia, Zitronensaft, Guarkernmehl\nOptional: ½ Scheibe Knäckebrot',
+      instructions: 'Proteinpulver, Chiasamen, Leinsamen und Flohsamenschalen in ein verschließbares Glas geben.\nMandelmilch drauf, Glas verschließen und schütteln.\nÜber Nacht im Kühlschrank quellen lassen.\nMorgens in tiefen Teller geben, Beeren drauf.\nHimbeersauce: TK-Himbeeren auftauen, mit Stevia, Zitronensaft pürieren, mit Guarkernmehl andicken.\nSauce drüber, optional Knäckebrot darüber bröseln.',
+      notes: '📸 Rezept von Stefan Schullerbauer. Hält die ganze Himbeersauce 1 Woche im Kühlschrank. 13 kg in 5 Monaten damit abgenommen!'
+    },
+    {
+      id: 'builtin-protein-power-bowl-kathrin',
+      name: 'Protein-Power-Bowl (clean)',
+      cat: 'Frühstück', cal: 320, portions: 1,
+      protein: '28', carbs: '18', fat: '12', sugar: '5',
+      ingredients: '250g Skyr oder griechischer Joghurt (natur)\n1 EL Chiasamen\n1 EL geschrotete Leinsamen\n30g Beeren (z.B. Himbeeren)\n1 EL Mandelmus (100% Mandeln)',
+      instructions: 'Alles in eine Schüssel geben.\nGut vermengen und 5–10 Minuten quellen lassen.\nSofort genießen.',
+      notes: '📸 Rezept von Kathrin Loos (@leichter_leben). Ballaststoffreich, clean, zuckerfrei. Kein Pulver, nur echtes Essen. 25–30g Eiweiß pro Portion.'
+    },
+    {
+      id: 'builtin-quark-hafer-taler',
+      name: 'Quark-Hafer-Taler',
+      cat: 'Snack', cal: 65, portions: 1,
+      protein: '4', carbs: '8', fat: '1', sugar: '3',
+      ingredients: 'Für ca. 12 Taler:\n250g Magerquark\n100g Haferflocken\n2 Eier\n1–2 EL Zucker oder Honig\n1 TL Backpulver\n1 Prise Salz\n1 TL Vanillezucker oder Zimt\nOptional: Mandelblättchen zum Bestreuen',
+      instructions: 'Alle Zutaten in einer Schüssel gut vermengen.\nTeig 5 Min. quellen lassen.\nIn beschichteter Pfanne (oder Airfryer 180°C) kleine Taler formen.\nJe 3–4 Min. pro Seite goldbraun braten.',
+      notes: '📸 Rezept von Karola Müller. Pro Taler ca. 65 kcal. 3 Taler als Snack = 195 kcal. Einfrieren klappt prima.'
+    },
+    {
+      id: 'builtin-fruehstueckskuchen',
+      name: 'Frühstückskuchen (Banane-Hafer)',
+      cat: 'Frühstück', cal: 500, portions: 1,
+      protein: '22', carbs: '62', fat: '14', sugar: '28',
+      ingredients: 'Für 2 Portionen:\n100g Hafermehl\n2 sehr reife Bananen\n2 Eier\n200g Skyr\n120ml Pflanzenmilch\n1 TL Zimt\n1 TL Vanille\n1 Prise Salz\n2½ TL Weinstein-Backpulver\n2 EL Nussmus\n2 EL Zitronensaft\nOptional: Schokolade & Nussmus on top',
+      instructions: 'Ofen auf 180°C vorheizen.\nBananen in der Form zerdrücken.\nEier, Skyr, Milch & Gewürze verrühren.\nHafermehl & Backpulver unterheben.\nOptional: Schokolade & Nussmus oben drauf.\n35–40 Min. backen bis goldbraun.',
+      notes: '📸 Rezept von Kathrin Loos. Tipp: Perfekt mit Fruchtsauce oder TK-Beeren. Gut vorzubereiten für Meal-Prep.'
+    },
+    {
+      id: 'builtin-protein-toast',
+      name: 'Protein Toast selbstgemacht',
+      cat: 'Frühstück', cal: 150, portions: 1,
+      protein: '12', carbs: '7', fat: '8', sugar: '1',
+      ingredients: 'Für ca. 14 Scheiben:\n500g Magerquark\n8 Eier\n100g Haferflocken\n100g gemahlene Mandeln\n60g Eiweißpulver (neutral)\n2 TL Weinstein-Backpulver\n1 TL Salz\nKörner nach Wahl zum Bestreuen',
+      instructions: 'Ofen auf 180°C vorheizen.\nQuark, Eier und Eiweißpulver glatt verrühren.\nTrockene Zutaten (Haferflocken, Mandeln, Backpulver, Salz) untermischen.\nTeig in Kastenform füllen, mit Körnern bestreuen.\nCa. 60 Min. backen.',
+      notes: '📸 Rezept von Kathrin Loos. Perfekt zum Einfrieren – Scheiben direkt im Toaster aufbacken. Sehr eiweißreich!'
+    },
+    {
+      id: 'builtin-spargel-schinken-wraps',
+      name: 'Spargel-Schinken-Wraps (Airfryer)',
+      cat: 'Hauptgericht', cal: 440, portions: 1,
+      protein: '24', carbs: '29', fat: '25', sugar: '3',
+      ingredients: 'Für 2 Personen:\n2 Wraps\n100g geriebener Mozzarella\n8 Stangen grüner Spargel\n50ml Sauce Hollandaise\n2 Scheiben Kochschinken',
+      instructions: 'Wraps ausbreiten, gleichmäßig mit Mozzarella bestreuen.\nJe 4 Spargelstangen mittig auf die Wraps legen.\nMit Sauce Hollandaise übergießen.\nJe 1 Scheibe Kochschinken auf den Spargel legen.\nWraps fest aufrollen, in Airfryer legen.\n15 Min. | 180°C bis goldbraun und knusprig.\nOptional: noch etwas Käse drauf und kurz weiterfrittieren.',
+      notes: '📸 Quelle: airfryer.club. Airfryer-Rezept, 25 Min. Zubereitungszeit.'
+    },
+    {
+      id: 'builtin-lachs-spargel',
+      name: 'Lachs-Spargel-Päckchen (Airfryer)',
+      cat: 'Hauptgericht', cal: 482, portions: 1,
+      protein: '43', carbs: '6', fat: '33', sugar: '2',
+      ingredients: '200g Lachsfilet\n8 Stangen grüner Spargel\n1 EL Öl\nFischgewürz nach Wahl\nBackpapier',
+      instructions: 'Einen Bogen Backpapier zu einem Päckchen falten.\nLachsfilet und Spargel hineinlegen.\nMit Öl beträufeln und würzen.\nPäckchen verschließen und leicht beschweren (z.B. mit Messer).\n17 Min. | 180°C im Airfryer garen.\nDirekt im Päckchen servieren!',
+      notes: '📸 Quelle: airfryer.club. Quick-Rezept, 25 Min. Sehr proteinreich, kaum Kohlenhydrate.'
+    },
+    {
+      id: 'builtin-kaesekuchen-muffins',
+      name: 'Käsekuchen-Muffins mit Mandarinen',
+      cat: 'Dessert', cal: 117, portions: 1,
+      protein: '6', carbs: '12', fat: '5', sugar: '8',
+      ingredients: 'Für 6 Stück:\n250g Magerquark\n30g weiche Butter\n30g Zucker\n20g Vanillepuddingpulver\n1 Päckchen Vanillezucker\n1 Ei\n50g Mandarinen (Dose, abgetropft)\nPuderzucker zum Garnieren\n6 Muffinförmchen',
+      instructions: 'Alle Zutaten – bis auf die Mandarinen – verrühren.\nMandarinen unterheben.\nTeig auf die 6 Förmchen verteilen.\nMuffinförmchen in Airfryer geben.\n20 Min. | 150°C backen.\nMit Puderzucker garniert servieren.',
+      notes: '📸 Quelle: airfryer.club. Pro Stück 117 kcal. Perfekter kleiner Nachtisch ohne schlechtes Gewissen.'
+    },
+    {
+      id: 'builtin-zucchini-frikas',
+      name: 'Knusprige Zucchini-Frikas (Airfryer)',
+      cat: 'Hauptgericht', cal: 447, portions: 1,
+      protein: '23', carbs: '33', fat: '24', sugar: '4',
+      ingredients: 'Für 2 Personen (ca. 10 Frikas):\n2 Zucchini, geraspelt\n150g Feta, zerbröselt\n3 EL Petersilie, gehackt\n2 Eier\n50g Paniermehl\n2 Schalotten, gewürfelt\n1 Knoblauchzehe, gepresst\n1½ TL griechische Gewürzmischung\nÖlspray',
+      instructions: 'Zucchini in einem Tuch kräftig ausdrücken (wichtig!).\nMit allen restlichen Zutaten vermischen.\nÖlspray auf Airfryer-Korb.\nZu ca. 10 Frikadellen formen.\n15 Min. | 180°C bräunen, wenden.\n3–5 Min. | 180°C fertig knusprig braten.\nMit Zaziki servieren.',
+      notes: '📸 Quelle: airfryer.club. Zucchini unbedingt gut ausdrücken – sonst wird der Teig zu feucht.'
+    },
+    {
+      id: 'builtin-spargel-cordon-bleu',
+      name: 'Spargel-Cordon-Bleu (Airfryer)',
+      cat: 'Hauptgericht', cal: 235, portions: 1,
+      protein: '18', carbs: '17', fat: '11', sugar: '2',
+      ingredients: 'Für 4 Stück:\n8 Stangen weißer Spargel, geschält\n4 Scheiben Schinken\n4 Scheiben Gouda\n1 Schale Mehl\n3 Eier, verquirlt\nPanko- und Semmelbrösel (1:1)\nÖlspray',
+      instructions: 'Je 2 Spargelstangen in eine Scheibe Schinken und Käse einwickeln, mit Zahnstochern fixieren.\nMehlen, durch Ei ziehen, in Bröseln wenden.\nIn Airfryer legen, mit Öl besprühen.\n15 Min. | 180°C bräunen, wenden.\n5 Min. | 180°C fertig garen.\nMit Hollandaise und Salat servieren.',
+      notes: '📸 Quelle: airfryer.club. Achtung: echte Suchtgefahr! Pro Stück 235 kcal.'
+    },
+    {
+      id: 'builtin-crispy-lachswuerfel',
+      name: 'Crispy Lachswürfel (Airfryer)',
+      cat: 'Hauptgericht', cal: 508, portions: 1,
+      protein: '37', carbs: '24', fat: '28', sugar: '1',
+      ingredients: 'Für 4 Portionen:\n4 Lachsfilets ohne Haut, in Würfeln\n100g Semmelbrösel\n½ TL ital. Kräuter\n¾ TL Salz\n¼ TL Paprikapulver edelsüß\n30g Weizenmehl Type 405\n2 Eier\n2 EL mittelscharfer Senf\n1 EL Olivenöl',
+      instructions: 'Semmelbrösel, Kräuter, ½ TL Salz und Paprika mischen und auf Teller geben.\nMehl auf flachem Teller verteilen.\nEier, Senf, ¼ TL Salz und Pfeffer in tiefem Teller verquirlen.\nLachs erst im Mehl, dann im Ei, zuletzt in Bröseln wenden.\nGarkorb mit Backpapier auslegen, mit Olivenöl bepinseln.\nLachs darauf verteilen, 15 Min. | 180°C backen, nach Hälfte wenden.',
+      notes: '📸 Quelle: airfryer.club. Lachs direkt gefroren in den Airfryer geht auch! 35 Min. Zubereitungszeit. 5 Sterne Rezept.'
+    },
+    {
+      id: 'builtin-roemersalat-steak',
+      name: 'Römersalat mit Steakstreifen (Airfryer)',
+      cat: 'Salat', cal: 544, portions: 1,
+      protein: '34', carbs: '20', fat: '37', sugar: '6',
+      ingredients: 'Für 2 Personen:\n1 Rinderhüftsteak (à 220g)\n5 EL Olivenöl\nSalz, Pfeffer\n2 Mini-Römersalatherzen, halbiert\n2 EL heller Balsamicoessig\n50g Joghurt\n½ TL Senf\n1 Schalotte in Stücken\n40g geriebener Parmesan\n½ Salatgurke in Würfeln\n1 Stange Staudensellerie\nKerne von ½ Granatapfel',
+      instructions: 'Fleisch mit 1 EL Öl bepinseln, 10 Min. | 200°C im Airfryer garen.\nAus Garkorb nehmen, salzen, pfeffern, in Alufolie 5 Min. ruhen lassen.\nSalatherzen mit 1 EL Öl bepinseln, 3 Min. | 180°C garen, wenden.\nÜbriges Öl, Essig, Joghurt, Senf und Schalotte mit Stabmixer pürieren, Parmesan unterrühren.\nFleisch in Streifen schneiden, alles anrichten, mit Dressing beträufeln, Granatapfelkerne drüber.',
+      notes: '📸 Quelle: airfryer.club. Quick-Rezept, 20 Min. Sehr sättigend durch Protein und gesunde Fette.'
+    },
+    {
+      id: 'builtin-rote-linsen-pasta-haehnchen',
+      name: 'Rote-Linsen-Pasta mit Hähnchen & Pesto',
+      cat: 'Hauptgericht', cal: 600, portions: 1,
+      protein: '49', carbs: '38', fat: '27', sugar: '4',
+      ingredients: 'Für 4 Portionen:\n400g Hähnchenbrustfilet\n2 EL Olivenöl\nSalz, Pfeffer, 1 TL ital. Kräuter\n80g semi-getrocknete Tomaten\n80g Haselnusskerne\n60g Parmesan oder Pecorino\n1 Knoblauchzehe\n250g rote Linsen-Pasta\n½ Bund Petersilie\n80g Oliven ohne Stein',
+      instructions: 'Hähnchenfilet würfeln, mit 1 EL Öl, Salz, Pfeffer, Kräutern vermengen.\nFleischstücke auf Spieße, kalt stellen.\nTomaten grob zerkleinern, Nüsse hacken, Käse reiben, Knoblauch hacken.\nPasta nach Packung bissfest kochen, ca. 1 Tasse Kochwasser aufheben.\nTomaten, Nüsse, Käse, Knoblauch mit 80ml Nudelwasser und Öl pürieren → Pesto.\nHähnchenspieße in Pfanne 10 Min. goldbraun braten.\nPasta mit Pesto vermengen, Nudelwasser angießen.\nHähnchenspieße drauflegen, mit Oliven und Petersilie garnieren.',
+      notes: '📸 Quelle: Magazin "Iss dich gesund". Rote Linsen-Pasta hat mehr Protein und weniger KH als normale Pasta!'
+    },
+    {
+      id: 'builtin-quinoa-bowl-bunt',
+      name: 'Bunte Quinoa-Bowl',
+      cat: 'Hauptgericht', cal: 456, portions: 1,
+      protein: '18', carbs: '48', fat: '22', sugar: '8',
+      ingredients: 'Für 4 Portionen:\n200g Quinoa tricolor\n400g bunte Möhren\n2 EL Olivenöl\n2–3 EL Apfelessig\nSalz, Pfeffer\n1 Bund Radieschen\n1 Bund Rucola (ca. 80g)\n1 Dose Kidneybohnen (ca. 250g Abtropfgewicht)\n1 reife Avocado\n1–2 TL Zitronensaft\n1 kleine rote Chilischote\n50ml Gemüsebrühe\nZimt, gemahlen\n1 TL Agavendicksaft\n40g gehackte Pistazien',
+      instructions: 'Quinoa nach Packungsangabe kochen, etwas abkühlen lassen.\nMöhren schälen, würfeln, in 1 EL Öl mit Essig, Salz, Pfeffer marinieren.\nRadieschen waschen, vierteln. Rucola waschen, trockenschleudern.\nKidneybohnen abspülen. Avocado würfeln, mit Zitronensaft beträufeln.\nChili, restliches Öl, Brühe, etwas Zimt, Salz, Pfeffer und Agavendicksaft zu Dressing verquirlen.\nAlles in Schalen anrichten, mit Dressing beträufeln, Pistazien bestreuen.',
+      notes: '📸 Quelle: Magazin "Iss dich gesund". Avocado verringert Blutdruck und verlangsamt Alterungsprozesse laut Dr. Riedl.'
+    },
+
+    // ── NEUE REZEPTE (3. BATCH – ZAUBERTOPF-CLUB) ────────────
+    {
+      id: 'builtin-haehnchen-curry-onepot',
+      name: 'Indisches One-Pot-Hähnchencurry',
+      cat: 'Hauptgericht', cal: 489, portions: 1,
+      protein: '63', carbs: '27', fat: '14', sugar: '8',
+      ingredients: 'Für 4 Personen:\n500g Hähnchenbrustfilet, in Würfeln\n2 cm Ingwer\n½ rote Chilischote\n2 Knoblauchzehen\n2 TL rote Currypaste\n20g Rapsöl\n250g Karotten, in Scheiben\n400g Kokosmilch (Dose)\n100g Wasser\n150g Frühlingszwiebeln (ca. 3 cm Stücke)\n2 kleine Pak Choi, längs geviertelt\nBlättchen von 3 Stielen Koriander\n1½ TL Salz\n2 Prisen Pfeffer',
+      instructions: '1. Ingwer, Chili und Knoblauch fein hacken oder zerkleinern. Currypaste mit Öl zugeben und 3 Min. bei mittlerer Hitze dünsten.\n2. Karotten zugeben, 5 Min. dünsten. Kokosmilch, Wasser, Frühlingszwiebeln und Pak Choi zugeben, 8 Min. köcheln.\n3. Hähnchen zugeben, mit Flüssigkeit bedecken und 7 Min. weitergaren.\n4. Mit Salz, Pfeffer abschmecken, mit Koriander garnieren.',
+      notes: '📸 Quelle: zaubertopf-club.de. Low Carb: Mit Blumenkohlreis statt normalem Reis → nur 11g KH und 37g Protein pro Portion! Normaler Reis wäre +175 kcal.'
+    },
+    {
+      id: 'builtin-kuerbissuppe-kokos',
+      name: 'Kürbissuppe mit Kokosmilch',
+      cat: 'Suppe', cal: 284, portions: 1,
+      protein: '5', carbs: '17', fat: '20', sugar: '10',
+      ingredients: 'Für 4 Personen:\n800g Hokkaidokürbis (Schale kann dran bleiben!)\n1 Zwiebel (ca. 50g)\n2 Knoblauchzehen\n20g Rapsöl\n700g Gemüsebrühe\n100g Kokosmilch\n1 TL Salz\n½ TL Pfeffer\n3 Prisen Muskatnusspulver\nKürbiskerne zum Garnieren',
+      instructions: '1. Zwiebel und Knoblauch zerkleinern, mit Rapsöl 2 Min. andünsten.\n2. Kürbis grob würfeln (Schale muss beim Hokkaido nicht geschält werden!), dazugeben.\n3. Gemüsebrühe, Salz, Pfeffer und Muskat zugeben, 15 Min. köcheln.\n4. Kokosmilch zugeben, alles glatt pürieren.\n5. In Schalen füllen, mit Kürbiskernen garnieren.',
+      notes: '📸 Quelle: zaubertopf-club.de. Protein-Boost möglich: Kichererbsen aus Dose untermischen oder Skyr/Quark einrühren. Hokkaido muss nicht geschält werden – spart Zeit!'
+    },
+    {
+      id: 'builtin-eiercreme-aufstrich',
+      name: 'Eiercreme-Brotaufstrich',
+      cat: 'Frühstück', cal: 63, portions: 1,
+      protein: '3', carbs: '1', fat: '5', sugar: '0',
+      ingredients: 'Ergibt ca. 650g (Angabe pro EL):\n500g Wasser\n6 Eier\n20g Gewürzgurken\n200g Frischkäse\n100g Crème fraîche\n10g Schnittlauch, in Röllchen\n1 TL Salz\n2 Prisen Pfeffer',
+      instructions: '1. Eier hart kochen (16 Min. in kochendem Wasser), abschrecken und pellen.\n2. Eier mit Frischkäse, Crème fraîche, Gurken, Schnittlauch, Salz und Pfeffer fein zerkleinern/mixen.\n3. In luftdichten Behälter füllen, kalt stellen.\n4. Hält 2–3 Tage im Kühlschrank. Vor Servieren kurz umrühren.',
+      notes: '📸 Quelle: zaubertopf-club.de. Nur 1g KH pro EL – super als Brotaufstrich statt Butter oder Frischkäse pur. Thermomix: Eier 16 Min. | Varoma | Stufe 1, dann alles 5 Sek. | Stufe 4,5.'
+    },
+    {
+      id: 'builtin-skyr-griesschnitten',
+      name: 'Skyr-Grießschnitten mit Himbeeren',
+      cat: 'Dessert', cal: 199, portions: 1,
+      protein: '24', carbs: '45', fat: '1', sugar: '10',
+      ingredients: 'Für 2 Personen:\n400g Skyr\n40g Erythrit (Zuckerersatz)\n2 EL Hartweizengrieß\n1 EL Stärke\n1 Ei\nMark von 1 Vanilleschote\n100g Himbeeren\n\nAusserdem: Auflaufform 20×15 cm',
+      instructions: '1. Backofen auf 160°C Umluft vorheizen. Auflaufform mit Backpapier auskleiden.\n2. Skyr, Erythrit, Grieß, Stärke, Ei und Vanillemark glatt verrühren.\n3. Masse in die Auflaufform füllen und glatt streichen.\n4. Mit Himbeeren belegen und leicht in die Masse drücken.\n5. Ca. 25 Min. backen. Abkühlen lassen, dann in Schnitten schneiden.',
+      notes: '📸 Quelle: zaubertopf-club.de. 24g Protein, nur 1g Fett! Erythrit hat 0 kcal und keinen Blutzuckereffekt. Auch mit TK-Himbeeren funktioniert super.'
+    },
+    {
+      id: 'builtin-fitnessbrot',
+      name: 'Fitnessbrot (Low Carb)',
+      cat: 'Frühstück', cal: 251, portions: 1,
+      protein: '16', carbs: '13', fat: '17', sugar: '1',
+      ingredients: 'Für 1 Brot à 10 Scheiben:\n200g Mandeln\n100g Leinsamen + 3 EL zum Bestreuen\n500g Magerquark\n50g Sonnenblumenkerne\n20g Flohsamenschalen\n1 Päckchen Backpulver\n1 TL Salz\nAusserdem: Kastenform 20 cm Länge',
+      instructions: '1. Backofen auf 180°C Ober-/Unterhitze vorheizen. Form mit Backpapier auslegen.\n2. Mandeln und 75g Leinsamen fein mahlen (Blender oder Thermomix 20 Sek. Stufe 10).\n3. Alle restlichen Zutaten dazugeben und 2 Min. vermengen.\n4. Teig in die vorbereitete Kastenform geben.\n5. Mit den restlichen Leinsamen bestreuen.\n6. 45–50 Min. goldbraun backen. Auskühlen lassen, dann in Scheiben schneiden.',
+      notes: '📸 Quelle: zaubertopf-club.de. Pro Scheibe: 16g Protein, nur 13g KH! Leinsamen binden wie Mehl, machen satt und senken Cholesterin. Einfrieren in Scheiben, morgens toasten.'
+    },
+
+    // ── NEUE REZEPTE (2. BATCH) ───────────────────────────────
+    {
+      id: 'builtin-pflanzl-proteinpulver',
+      name: 'Pflanzliches Proteinpulver (DIY)',
+      cat: 'Snack', cal: 195, portions: 1,
+      protein: '8', carbs: '14', fat: '12', sugar: '1',
+      ingredients: 'Für das Pulver (ergibt ca. 15 Portionen):\n20 EL Vollkornhaferflocken oder Dinkelflocken\n5 EL Haselnüsse (oder andere Nüsse)\n8 TL Sonnenblumenkerne\n8 TL Leinsamen\n8 TL Kürbiskerne\n\nPro Portion (Anwendung):\n4 EL Pulver + 300ml Pflanzenmilch',
+      instructions: '1. Alle Zutaten zusammen fein mahlen (Blender oder Getreidemühle).\n2. In luftdichtes Glas füllen – hält ca. 2 Wochen.\n3. Anwenden: 4 EL Pulver + 300ml Flüssigkeit verrühren.\nAls Basis für Smoothies, Overnight Oats oder Porridge verwenden.',
+      notes: '📸 Quelle: @smarticularnet. Ohne Zusatzstoffe, ohne Zucker. Günstiger als gekauftes Proteinpulver. Pro Portion (4 EL) ca. 195 kcal.'
+    },
+    {
+      id: 'builtin-haferflockenkuchen',
+      name: 'Saftiger Haferflockenkuchen',
+      cat: 'Dessert', cal: 170, portions: 1,
+      protein: '6', carbs: '28', fat: '4', sugar: '10',
+      ingredients: 'Für ca. 10 Stücke:\n300g Haferflocken\n1 TL Weinstein-Backpulver\n1 TL Zimt\n2 Bananen (oder 2 EL Dattelmus)\n250g Apfelmus (ungesüßt)\n4 Eier\n1 Prise Salz\nOptional: gehackte Nüsse oder Mandeln unterrühren',
+      instructions: '1. Ofen auf 180°C vorheizen.\n2. Trockene Zutaten (Haferflocken, Backpulver, Zimt, Salz) mischen.\n3. Feuchte Zutaten (Bananen zerdrückt, Apfelmus, Eier) verrühren.\n4. Alles gut vermengen, optional Nüsse unterrühren.\n5. In Springform oder Auflaufform geben.\n6. 30 Min. backen.',
+      notes: '📸 Quelle: Kathrin Loos (@leichter_leben). Pro Stück ca. 170 kcal. Ohne Zucker! Bananen und Apfelmus sorgen für natürliche Süße und Saftigkeit.'
+    },
+    {
+      id: 'builtin-brownies-bohnen',
+      name: 'Brownies mit Kidneybohnen (9 Stück)',
+      cat: 'Dessert', cal: 82, portions: 1,
+      protein: '5', carbs: '10', fat: '3', sugar: '4',
+      ingredients: 'Für 9 Stück:\n200g Kidneybohnen (Dose, abgetropft)\n3 Eier\n40ml Mandelmilch\n30g Backkakao / Kakaopulver\n50g Skyr\n50g Erythrit (Zuckerersatz, 0 kcal)\n1 Banane\n40g Dinkelmehl\n2 TL Backpulver',
+      instructions: '1. Kidneybohnen gut abspülen und abtropfen lassen.\n2. Alle Zutaten zusammen im Mixer glatt pürieren.\n3. Teig in gefettete oder mit Backpapier ausgelegte Backform geben.\n4. Bei 170°C Umluft für 35 Min. backen.\n5. Vollständig auskühlen lassen – erst dann schneiden!',
+      notes: '📸 Quelle: Jassi Warnke. Nur 82 kcal pro Brownie! Bohnen schmeckt man NICHT. Erythrit hat keine Kalorien und keinen Blutzuckereffekt. Kühl aufbewahren, hält 3–4 Tage.'
+    },
+    {
+      id: 'builtin-hafer-wraps',
+      name: 'Hafer-Wraps (3 Zutaten)',
+      cat: 'Hauptgericht', cal: 137, portions: 1,
+      protein: '5', carbs: '20', fat: '4', sugar: '0',
+      ingredients: 'Für 2–3 Wraps:\n100g Hafermehl (Haferflocken fein mixen)\n1 EL Leinsamen geschrotet\n180–220ml Wasser\nOptional: 1 Prise Himalaja Salz',
+      instructions: '1. Alle Zutaten verrühren und 2–3 Min. quellen lassen.\n2. Je nach Konsistenz noch etwas Wasser ergänzen.\n   → Teig soll flüssiger als Pfannkuchenteig, aber nicht wässrig sein.\n3. Pfanne auf mittlere Hitze vorheizen.\n4. Teig dünn ausstreichen.\n5. 1–2 Min. pro Seite backen – fertig!\n\nMeal-Prep: Vollständig auskühlen lassen, mit Backpapier trennen, einfrieren.\nAuftauen: Kurz in Pfanne von beiden Seiten, oder 10–15 Min. bei Zimmertemperatur.',
+      notes: '📸 Quelle: Kathrin Loos. Doppelte Menge machen und einfrieren – so immer saubere Wraps ohne Zusatzstoffe parat. Pro Wrap ca. 137 kcal.'
+    },
+    {
+      id: 'builtin-rote-rueben-linsen-rucola',
+      name: 'Rote-Rüben-Linsen-Salat mit Rucola',
+      cat: 'Salat', cal: 365, portions: 1,
+      protein: '14', carbs: '38', fat: '15', sugar: '12',
+      ingredients: '150g rote Rüben (vorgekocht, gewürfelt)\n100g Linsen (Dose, abgespült – grün oder schwarz)\n60g Rucola\n20g Kürbiskerne oder Walnüsse\n1 TL Olivenöl\n1 TL Balsamico dunkel\nSaft ½ Zitrone\nSalz, Pfeffer\n1 TL Dijonsenf\nOptional: 30g Ziegenkäse (+70 kcal)',
+      instructions: '1. Linsen abspülen und abtropfen lassen.\n2. Rote Rüben würfeln.\n3. Dressing: Olivenöl, Balsamico, Zitronensaft, Senf, Salz, Pfeffer verquirlen.\n4. Rucola auf Teller, Rote Rüben und Linsen darüber.\n5. Mit Dressing beträufeln.\n6. Kürbiskerne oder Walnüsse darüberstreuen.\n7. Optional: Ziegenkäse darüber bröckeln.',
+      notes: '💚 Dein Lieblingsrezept! Rote Rüben = Betain (schützt Leber, senkt Entzündungen), Linsen = Pflanzeneiweiß + Ballaststoffe, Rucola = reich an Vitamin K + sekundäre Pflanzenstoffe. Absolut sättigend und nährstoffdicht.'
+    },
+
+    // ── ORIGINAL REZEPTE (behalten) ───────────────────────────
+    {
+      id: 'builtin-kaffee-milch',
+      name: 'Kaffee mit Milch (80ml)',
+      cat: 'Snack',
+      cal: 43,
+      portions: 1,
+      protein: '3',
+      carbs: '4',
+      fat: '1',
+      ingredients: '1 Tasse Kaffee\n80ml Milch 1,5% Fett',
+      instructions: 'Kaffee aufbrühen, Milch dazugeben.',
+      notes: 'Pro Tasse ca. 43 kcal.'
+    },
+    {
+      id: 'builtin-butterbreze',
+      name: 'Butterbreze',
+      cat: 'Frühstück',
+      cal: 350,
+      portions: 1,
+      protein: '8',
+      carbs: '46',
+      fat: '14',
+      ingredients: '1 Laugenbreze (ca. 90g)\nca. 10g Butter',
+      instructions: '',
+      notes: 'Typische bayerische Bäckerbreze mit Butter.'
+    },
+    {
+      id: 'builtin-fruehstueck-joghurt',
+      name: 'Joghurt-Skyr-Bowl mit Erdbeeren',
+      cat: 'Frühstück',
+      cal: 355,
+      portions: 1,
+      protein: '22',
+      carbs: '48',
+      fat: '8',
+      ingredients: '1 Becher (150g) griech. Joghurt Vanille Mandel\n70g Skyr natur\n30g Haferflocken\n1 TL Leinsamen geschrotet\n1 TL Flohsamenschalen\n100g Erdbeeren',
+      instructions: 'Joghurt und Skyr in einer Schüssel verrühren.\nHaferflocken, Leinsamen und Flohsamenschalen unterrühren.\nErdbeeren waschen, halbieren und obendrauf geben.\nCa. 5 Min. quellen lassen, dann genießen.',
+      notes: 'Flohsamenschalen binden Flüssigkeit – danach viel trinken! Ballaststoffreich und sehr sättigend.'
+    }
+  ];
+  let changed = false;
+  newRecipes.forEach(r => {
+    if (!recipes.find(x => x.id === r.id)) {
+      recipes.push(r);
+      changed = true;
+    }
+  });
+  if (changed) save('ad_recipes', recipes);
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('headerDate').textContent = formatDate(today);
+  document.getElementById('w-date').value = today;
+  document.getElementById('log-date').value = today;
+  if (settings.height) document.getElementById('w-height').value = settings.height;
+  if (settings.goalWeight) document.getElementById('goal-weight').value = settings.goalWeight;
+  if (settings.age) document.getElementById('s-age').value = settings.age;
+  document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
+  mergeNewRecipes();
+  injectTodayEntries();
+  injectTodayMacros();
+  renderWeightTable();
+  renderCurrentStats();
+  loadDayLog();
+  renderRecipes();
+  estimateCal();
+});
+
+// ===== TABS =====
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'verlauf') renderCharts();
+}
+
+// ===== WEIGHT =====
+function saveHeight() {
+  settings.height = document.getElementById('w-height').value;
+  save('ad_settings', settings);
+}
+function saveGoal() {
+  settings.goalWeight = document.getElementById('goal-weight').value;
+  save('ad_settings', settings);
+  renderCurrentStats();
+}
+function saveAge() {
+  settings.age = document.getElementById('s-age').value;
+  save('ad_settings', settings);
+  document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
+}
+
+function addWeightEntry() {
+  const date = document.getElementById('w-date').value;
+  const weight = parseFloat(document.getElementById('w-weight').value);
+  if (!date || isNaN(weight)) { alert('Bitte Datum und Gewicht eingeben.'); return; }
+  const waist = parseFloat(document.getElementById('w-waist').value) || null;
+  const hip = parseFloat(document.getElementById('w-hip').value) || null;
+  const height = parseFloat(document.getElementById('w-height').value) || null;
+  if (height) { settings.height = height; save('ad_settings', settings); }
+  const bmi = height ? (weight / ((height/100) * (height/100))).toFixed(1) : null;
+  // Remove existing entry for same date
+  weightLog = weightLog.filter(e => e.date !== date);
+  weightLog.push({ date, weight, waist, hip, bmi });
+  weightLog.sort((a,b) => a.date.localeCompare(b.date));
+  save('ad_weightLog', weightLog);
+  document.getElementById('w-weight').value = '';
+  document.getElementById('w-waist').value = '';
+  document.getElementById('w-hip').value = '';
+  renderWeightTable();
+  renderCurrentStats();
+}
+
+function renderCurrentStats() {
+  const el = document.getElementById('currentStats');
+  const goal = parseFloat(document.getElementById('goal-weight').value) || parseFloat(settings.goalWeight);
+  if (!weightLog.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">⚖️</div><p>Noch kein Eintrag</p></div>';
+    document.getElementById('goalProgress').innerHTML = '';
+    return;
+  }
+  const latest = weightLog[weightLog.length - 1];
+  const first = weightLog[0];
+  const diff = (latest.weight - first.weight).toFixed(1);
+  const diffStr = diff > 0 ? '+' + diff : diff;
+  const diffClass = diff < 0 ? 'trend-down' : 'trend-up';
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="stat-box"><div class="val">${latest.weight}</div><div class="lbl">kg aktuell</div></div>
+      <div class="stat-box"><div class="val ${diffClass}">${diffStr}</div><div class="lbl">kg gesamt</div></div>
+      ${latest.bmi ? `<div class="stat-box"><div class="val">${latest.bmi}</div><div class="lbl">BMI</div></div>` : ''}
+      ${latest.waist ? `<div class="stat-box"><div class="val">${latest.waist}</div><div class="lbl">cm Bauch</div></div>` : ''}
+    </div>`;
+
+  const goalEl = document.getElementById('goalProgress');
+  if (goal && first.weight) {
+    const total = first.weight - goal;
+    const done = first.weight - latest.weight;
+    const pct = Math.max(0, Math.min(100, (done / total * 100))).toFixed(0);
+    const remaining = (latest.weight - goal).toFixed(1);
+    goalEl.innerHTML = `
+      <div style="font-size:12px;color:var(--gray);margin-bottom:6px">Ziel: <b>${goal} kg</b> · Noch: <b>${remaining > 0 ? remaining + ' kg' : '✅ Erreicht!'}</b></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:11px;color:var(--gray);margin-top:4px">${pct}% geschafft</div>`;
+  } else {
+    goalEl.innerHTML = '<div style="font-size:12px;color:var(--gray)">Zielgewicht eingeben um Fortschritt zu sehen.</div>';
+  }
+}
+
+function renderWeightTable() {
+  const el = document.getElementById('weightTable');
+  if (!weightLog.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>Noch keine Einträge</p></div>';
+    return;
+  }
+  const rows = [...weightLog].reverse().map(e => `
+    <tr>
+      <td>${formatDate(e.date)}</td>
+      <td><b>${e.weight} kg</b></td>
+      <td>${e.waist ? e.waist + ' cm' : '–'}</td>
+      <td>${e.hip ? e.hip + ' cm' : '–'}</td>
+      <td>${e.bmi || '–'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteWeight('${e.date}')">✕</button></td>
+    </tr>`).join('');
+  el.innerHTML = `<table><tr><th>Datum</th><th>Gewicht</th><th>Bauch</th><th>Hüfte</th><th>BMI</th><th></th></tr>${rows}</table>`;
+}
+
+function deleteWeight(date) {
+  if (!confirm('Eintrag löschen?')) return;
+  weightLog = weightLog.filter(e => e.date !== date);
+  save('ad_weightLog', weightLog);
+  renderWeightTable();
+  renderCurrentStats();
+}
+
+// ===== DAY LOG =====
+function changeDay(delta) {
+  const d = new Date(document.getElementById('log-date').value);
+  d.setDate(d.getDate() + delta);
+  document.getElementById('log-date').value = d.toISOString().split('T')[0];
+  loadDayLog();
+}
+
+function getDay() {
+  const date = document.getElementById('log-date').value;
+  if (!dayLogs[date]) dayLogs[date] = { meals: [], sport: [], note: '' };
+  return dayLogs[date];
+}
+
+function loadDayLog() {
+  const day = getDay();
+  document.getElementById('day-note').value = day.note || '';
+  renderMeals();
+  renderSport();
+  renderCalSummary();
+}
+
+function calcBMR() {
+  // Mifflin-St Jeor, Frauen: 10×kg + 6.25×cm − 5×alter − 161
+  const w = parseFloat(weightLog.length ? weightLog[weightLog.length-1].weight : settings.weight) || 84;
+  const h = parseFloat(settings.height) || 160;
+  const a = parseFloat(settings.age) || 55;
+  return Math.round(10 * w + 6.25 * h - 5 * a - 161);
+}
+function calcTDEE() {
+  // Sitzende Tätigkeit: BMR × 1.2 (Büro/Haus, wenig Bewegung)
+  return Math.round(calcBMR() * 1.2);
+}
+
+function renderCalSummary() {
+  const day = getDay();
+  const eaten = day.meals.reduce((s,m) => s + (m.cal||0), 0);
+  const sportBurned = day.sport.reduce((s,e) => s + (e.cal||0), 0);
+  const tdee = calcTDEE();
+  const totalBurned = tdee + sportBurned;
+  const net = eaten - totalBurned; // negativ = Defizit (gut!)
+  const deficit = net < 0;
+
+  const totP = day.meals.reduce((s,m) => s + (parseFloat(m.protein)||0), 0);
+  const totKH = day.meals.reduce((s,m) => s + (parseFloat(m.carbs)||0), 0);
+  const totF = day.meals.reduce((s,m) => s + (parseFloat(m.fat)||0), 0);
+  const totZ = day.meals.reduce((s,m) => s + (parseFloat(m.sugar)||0), 0);
+  const hasMacros = totP > 0 || totKH > 0 || totF > 0 || totZ > 0;
+
+  // Kalorienbalken: 0 = totalBurned als Mitte, links = Defizit grün, rechts = Überschuss rot
+  const maxBar = Math.max(totalBurned * 1.3, eaten * 1.1);
+  const eatenPct = Math.min(100, eaten / maxBar * 100);
+  const burnedPct = Math.min(100, totalBurned / maxBar * 100);
+
+  const macroBar = hasMacros ? `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--gray);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Makros heute gesamt</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div style="background:#eef6f1;border-radius:7px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#2d7a4f">${totP.toFixed(0)}<span style="font-size:11px;font-weight:500">g</span></div>
+          <div style="font-size:10px;color:var(--gray);margin-top:1px">Protein</div>
+        </div>
+        <div style="background:#fff8f0;border-radius:7px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#e07b39">${totKH.toFixed(0)}<span style="font-size:11px;font-weight:500">g</span></div>
+          <div style="font-size:10px;color:var(--gray);margin-top:1px">Kohlenhydrate</div>
+        </div>
+        <div style="background:#fdf3f3;border-radius:7px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#d64040">${totF.toFixed(0)}<span style="font-size:11px;font-weight:500">g</span></div>
+          <div style="font-size:10px;color:var(--gray);margin-top:1px">Fett</div>
+        </div>
+        <div style="background:#f5f0fa;border-radius:7px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#7c4dbe">${totZ.toFixed(0)}<span style="font-size:11px;font-weight:500">g</span></div>
+          <div style="font-size:10px;color:var(--gray);margin-top:1px">Zucker</div>
+        </div>
+      </div>
+    </div>` : `<div style="margin-top:10px;font-size:11px;color:var(--gray)">💡 Makros optional beim Eintragen angeben (Protein, KH, Fett, Zucker)</div>`;
+
+  document.getElementById('calSummary').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+      <div style="background:var(--green-light);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--green)">${eaten}</div>
+        <div style="font-size:10px;color:var(--gray)">kcal gegessen</div>
+      </div>
+      <div style="background:#eef2ff;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#3b5bdb">${totalBurned}</div>
+        <div style="font-size:10px;color:var(--gray)">kcal verbrannt</div>
+        <div style="font-size:10px;color:#3b5bdb;margin-top:2px">Tagesverbrauch ${tdee} + Sport ${sportBurned}</div>
+      </div>
+      <div style="background:${deficit ? '#eef6f1' : '#fde8e8'};border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:${deficit ? 'var(--green)' : 'var(--red)'}">
+          ${deficit ? '' : '+'}${net}
+        </div>
+        <div style="font-size:10px;color:var(--gray)">${deficit ? '✅ Defizit' : '⚠️ Überschuss'}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin-bottom:3px">
+        <span>Gegessen</span><span>Verbrannt (Ziel)</span>
+      </div>
+      <div style="position:relative;height:12px;background:var(--border);border-radius:20px;overflow:hidden">
+        <div style="position:absolute;left:0;top:0;height:100%;width:${eatenPct}%;background:${deficit ? 'var(--green-mid)' : 'var(--red)'};border-radius:20px;transition:width 0.5s"></div>
+        <div style="position:absolute;left:0;top:0;height:100%;width:${burnedPct}%;border-right:2px dashed #555;"></div>
+      </div>
+    </div>
+    ${macroBar}`;
+}
+
+function addMeal() {
+  const name = document.getElementById('meal-name').value.trim();
+  const cal = parseInt(document.getElementById('meal-cal').value);
+  const type = document.getElementById('meal-type').value;
+  if (!name || isNaN(cal)) { alert('Name und kcal eingeben.'); return; }
+  const protein = document.getElementById('meal-protein').value;
+  const carbs = document.getElementById('meal-carbs').value;
+  const fat = document.getElementById('meal-fat').value;
+  const sugar = document.getElementById('meal-sugar').value;
+  const day = getDay();
+  day.meals.push({ name, cal, type, id: Date.now(),
+    protein: protein ? parseFloat(protein) : null,
+    carbs: carbs ? parseFloat(carbs) : null,
+    fat: fat ? parseFloat(fat) : null,
+    sugar: sugar ? parseFloat(sugar) : null });
+  save('ad_dayLogs', dayLogs);
+  document.getElementById('meal-name').value = '';
+  document.getElementById('meal-cal').value = '';
+  document.getElementById('meal-protein').value = '';
+  document.getElementById('meal-carbs').value = '';
+  document.getElementById('meal-fat').value = '';
+  document.getElementById('meal-sugar').value = '';
+  renderMeals();
+  renderCalSummary();
+}
+
+function renderMeals() {
+  const day = getDay();
+  const el = document.getElementById('mealList');
+  if (!day.meals.length) { el.innerHTML = '<div style="color:var(--gray);font-size:12px;margin-bottom:8px">Noch nichts eingetragen.</div>'; return; }
+  el.innerHTML = day.meals.map(m => `
+    <div class="entry-row">
+      <div class="name">${m.name}<br><span style="font-size:11px;color:var(--gray)">${m.type}</span></div>
+      <div class="cal">${m.cal} kcal</div>
+      <button class="btn btn-danger btn-sm" onclick="deleteMeal(${m.id})">✕</button>
+    </div>`).join('');
+}
+
+function deleteMeal(id) {
+  const day = getDay();
+  day.meals = day.meals.filter(m => m.id !== id);
+  save('ad_dayLogs', dayLogs);
+  renderMeals();
+  renderCalSummary();
+}
+
+function estimateCal() {
+  const type = document.getElementById('sport-type');
+  const min = parseInt(document.getElementById('sport-min').value) || 30;
+  const calPH = parseInt(type.options[type.selectedIndex].value);
+  if (calPH > 0) {
+    const est = Math.round(calPH / 60 * min);
+    document.getElementById('calEstimate').textContent = `Schätzung: ~${est} kcal bei ${min} Min`;
+  } else {
+    document.getElementById('calEstimate').textContent = '';
+  }
+}
+document.getElementById('sport-min').addEventListener('input', estimateCal);
+
+function addSport() {
+  const name = document.getElementById('sport-name').value.trim() || document.getElementById('sport-type').value;
+  const min = parseInt(document.getElementById('sport-min').value);
+  const typeEl = document.getElementById('sport-type');
+  const calPH = parseInt(typeEl.options[typeEl.selectedIndex].value);
+  let cal = calPH > 0 ? Math.round(calPH / 60 * (min || 30)) : 0;
+  if (!min) { alert('Bitte Minuten eingeben.'); return; }
+  const day = getDay();
+  day.sport.push({ name, min, cal, id: Date.now() });
+  save('ad_dayLogs', dayLogs);
+  document.getElementById('sport-name').value = '';
+  document.getElementById('sport-min').value = '';
+  renderSport();
+  renderCalSummary();
+}
+
+function renderSport() {
+  const day = getDay();
+  const el = document.getElementById('sportList');
+  if (!day.sport.length) { el.innerHTML = '<div style="color:var(--gray);font-size:12px;margin-bottom:8px">Noch keine Aktivität.</div>'; return; }
+  el.innerHTML = day.sport.map(s => `
+    <div class="entry-row">
+      <div class="name">${s.name}<br><span style="font-size:11px;color:var(--gray)">${s.min} Min</span></div>
+      <div class="cal" style="color:var(--green)">-${s.cal} kcal</div>
+      <button class="btn btn-danger btn-sm" onclick="deleteSport(${s.id})">✕</button>
+    </div>`).join('');
+}
+
+function deleteSport(id) {
+  const day = getDay();
+  day.sport = day.sport.filter(s => s.id !== id);
+  save('ad_dayLogs', dayLogs);
+  renderSport();
+  renderCalSummary();
+}
+
+function saveNote() {
+  const day = getDay();
+  day.note = document.getElementById('day-note').value;
+  save('ad_dayLogs', dayLogs);
+}
+
+// ===== RECIPES =====
+function openRecipeModal(id) {
+  document.getElementById('r-name').value = '';
+  document.getElementById('r-cal').value = '';
+  document.getElementById('r-portions').value = '1';
+  document.getElementById('r-protein').value = '';
+  document.getElementById('r-carbs').value = '';
+  document.getElementById('r-fat').value = '';
+  document.getElementById('r-ingredients').value = '';
+  document.getElementById('r-instructions').value = '';
+  document.getElementById('r-notes').value = '';
+  document.getElementById('recipe-edit-id').value = '';
+  document.getElementById('deleteRecipeBtn').style.display = 'none';
+  document.getElementById('modalTitle').textContent = 'Neues Rezept';
+
+  if (id) {
+    const r = recipes.find(x => x.id === id);
+    if (r) {
+      document.getElementById('r-name').value = r.name;
+      document.getElementById('r-cat').value = r.cat;
+      document.getElementById('r-cal').value = r.cal;
+      document.getElementById('r-portions').value = r.portions || 1;
+      document.getElementById('r-protein').value = r.protein || '';
+      document.getElementById('r-carbs').value = r.carbs || '';
+      document.getElementById('r-fat').value = r.fat || '';
+      document.getElementById('r-ingredients').value = r.ingredients || '';
+      document.getElementById('r-instructions').value = r.instructions || '';
+      document.getElementById('r-notes').value = r.notes || '';
+      document.getElementById('recipe-edit-id').value = r.id;
+      document.getElementById('deleteRecipeBtn').style.display = 'inline-block';
+      document.getElementById('modalTitle').textContent = 'Rezept bearbeiten';
+    }
+  }
+  closeDetailModal();
+  document.getElementById('recipeModal').classList.add('open');
+}
+
+function closeRecipeModal() {
+  document.getElementById('recipeModal').classList.remove('open');
+}
+
+function saveRecipe() {
+  const name = document.getElementById('r-name').value.trim();
+  const cal = parseInt(document.getElementById('r-cal').value);
+  if (!name || isNaN(cal)) { alert('Name und Kalorien sind Pflichtfelder.'); return; }
+  const editId = document.getElementById('recipe-edit-id').value;
+  const r = {
+    id: editId || Date.now().toString(),
+    name,
+    cat: document.getElementById('r-cat').value,
+    cal,
+    portions: parseInt(document.getElementById('r-portions').value) || 1,
+    protein: document.getElementById('r-protein').value,
+    carbs: document.getElementById('r-carbs').value,
+    fat: document.getElementById('r-fat').value,
+    ingredients: document.getElementById('r-ingredients').value,
+    instructions: document.getElementById('r-instructions').value,
+    notes: document.getElementById('r-notes').value,
+  };
+  if (editId) {
+    recipes = recipes.map(x => x.id === editId ? r : x);
+  } else {
+    recipes.push(r);
+  }
+  save('ad_recipes', recipes);
+  closeRecipeModal();
+  renderRecipes();
+}
+
+function deleteRecipe() {
+  const id = document.getElementById('recipe-edit-id').value;
+  if (!confirm('Rezept löschen?')) return;
+  recipes = recipes.filter(r => r.id !== id);
+  save('ad_recipes', recipes);
+  closeRecipeModal();
+  renderRecipes();
+}
+
+function filterCat(btn, cat) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const el = document.getElementById('recipeGrid');
+  el.style.display = cat ? 'grid' : 'block';
+  renderRecipes();
+}
+
+function filterRecipes() { renderRecipes(); }
+
+const CAT_ICONS = {
+  'Frühstück': '🌅', 'Hauptgericht': '🍽️', 'Salat': '🥗',
+  'Snack': '🍎', 'Suppe': '🍲', 'Dessert': '🍓'
+};
+const CAT_ORDER = ['Frühstück','Hauptgericht','Salat','Suppe','Snack','Dessert'];
+
+function recipeCard(r) {
+  return `<div class="recipe-card" onclick="openRecipeDetail('${r.id}')">
+    <h3>${r.name}</h3>
+    <div class="meta"><b style="color:var(--orange)">${r.cal} kcal</b> / Portion</div>
+    ${r.protein ? `<div class="meta" style="margin-top:4px">P: ${r.protein}g · KH: ${r.carbs||'–'}g · F: ${r.fat||'–'}g</div>` : ''}
+  </div>`;
+}
+
+function renderRecipes() {
+  const search = document.getElementById('recipe-search').value.toLowerCase();
+  let list = recipes;
+  if (search) list = list.filter(r => r.name.toLowerCase().includes(search) || (r.ingredients||'').toLowerCase().includes(search));
+  const el = document.getElementById('recipeGrid');
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🍽️</div><p>Keine Rezepte gefunden</p></div>';
+    return;
+  }
+
+  // Gefiltert nach einer Kategorie → einfaches Grid
+  if (currentCat) {
+    const filtered = list.filter(r => r.cat === currentCat);
+    if (!filtered.length) {
+      el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🍽️</div><p>Keine Rezepte in dieser Kategorie</p></div>';
+      return;
+    }
+    el.innerHTML = filtered.map(recipeCard).join('');
+    return;
+  }
+
+  // Alle → nach Kategorie gruppiert anzeigen
+  el.style.display = 'block'; // override grid for grouped view
+  const groups = CAT_ORDER.map(cat => {
+    const items = list.filter(r => r.cat === cat);
+    if (!items.length) return '';
+    return `
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--green-light)">
+          <span style="font-size:20px">${CAT_ICONS[cat]||'🍴'}</span>
+          <span style="font-weight:700;font-size:15px;color:var(--green)">${cat}</span>
+          <span class="badge badge-green" style="margin-left:4px">${items.length}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+          ${items.map(recipeCard).join('')}
+        </div>
+      </div>`;
+  }).join('');
+  // Sonstige Kategorien (Custom)
+  const knownCats = new Set(CAT_ORDER);
+  const others = list.filter(r => !knownCats.has(r.cat));
+  const otherGroup = others.length ? `
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--green-light)">
+        <span style="font-size:20px">🍴</span>
+        <span style="font-weight:700;font-size:15px;color:var(--green)">Sonstige</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+        ${others.map(recipeCard).join('')}
+      </div>
+    </div>` : '';
+
+  el.innerHTML = groups + otherGroup;
+}
+
+function openRecipeDetail(id) {
+  currentRecipeId = id;
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  const ing = r.ingredients ? r.ingredients.split('\n').filter(Boolean).map(l => `<li>${l}</li>`).join('') : '';
+  document.getElementById('recipeDetailContent').innerHTML = `
+    <div style="display:flex;align-items:start;gap:10px;margin-bottom:14px">
+      <div style="flex:1">
+        <h2 style="color:var(--green);font-size:16px;margin-bottom:4px">${r.name}</h2>
+        <span class="badge badge-green">${r.cat}</span>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:var(--orange)">${r.cal}</div>
+        <div style="font-size:11px;color:var(--gray)">kcal / Portion</div>
+      </div>
+    </div>
+    ${r.protein ? `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+      <div class="stat-box"><div class="val" style="font-size:18px">${r.protein}g</div><div class="lbl">Protein</div></div>
+      <div class="stat-box"><div class="val" style="font-size:18px">${r.carbs||'–'}g</div><div class="lbl">Kohlenhydrate</div></div>
+      <div class="stat-box"><div class="val" style="font-size:18px">${r.fat||'–'}g</div><div class="lbl">Fett</div></div>
+    </div>` : ''}
+    ${ing ? `<div style="margin-bottom:12px"><b style="font-size:13px">Zutaten (${r.portions} Portion${r.portions>1?'en':''}):</b><ul style="margin-top:6px;padding-left:18px;font-size:13px;line-height:1.8">${ing}</ul></div>` : ''}
+    ${r.instructions ? `<div style="margin-bottom:12px"><b style="font-size:13px">Zubereitung:</b><p style="margin-top:6px;font-size:13px;line-height:1.7;white-space:pre-wrap">${r.instructions}</p></div>` : ''}
+    ${r.notes ? `<div style="background:var(--green-light);padding:10px;border-radius:6px;font-size:12px;color:var(--green)">💡 ${r.notes}</div>` : ''}`;
+  document.getElementById('recipeDetailModal').classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('recipeDetailModal').classList.remove('open');
+}
+
+function editCurrentRecipe() {
+  closeDetailModal();
+  openRecipeModal(currentRecipeId);
+}
+
+function addRecipeToLog() {
+  const r = recipes.find(x => x.id === currentRecipeId);
+  if (!r) return;
+  const day = getDay();
+  day.meals.push({ name: r.name, cal: r.cal, type: r.cat, id: Date.now() });
+  save('ad_dayLogs', dayLogs);
+  closeDetailModal();
+  // Switch to tag tab
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-tag').classList.add('active');
+  document.querySelectorAll('nav button')[1].classList.add('active');
+  loadDayLog();
+  alert(`"${r.name}" wurde zum Tagesprotokoll hinzugefügt!`);
+}
+
+// ===== CHARTS =====
+function renderCharts() {
+  renderWeightChart();
+  renderCalChart();
+  renderStatsOverview();
+}
+
+function renderWeightChart() {
+  const ctx = document.getElementById('weightChart').getContext('2d');
+  if (weightChart) weightChart.destroy();
+  const data = weightLog.slice(-30);
+  if (!data.length) { ctx.canvas.parentElement.innerHTML += '<div class="empty-state"><div class="icon">📈</div><p>Noch keine Daten</p></div>'; return; }
+  weightChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(e => formatDate(e.date, true)),
+      datasets: [{
+        label: 'Gewicht (kg)',
+        data: data.map(e => e.weight),
+        borderColor: '#2d7a4f',
+        backgroundColor: 'rgba(45,122,79,0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: '#2d7a4f',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: v => v + ' kg' } }
+      }
+    }
+  });
+}
+
+function renderCalChart() {
+  const ctx = document.getElementById('calChart').getContext('2d');
+  if (calChart) calChart.destroy();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  const tdee = calcTDEE();
+  const eaten = days.map(d => (dayLogs[d]?.meals || []).reduce((s,m) => s+(m.cal||0), 0));
+  const sport = days.map(d => (dayLogs[d]?.sport || []).reduce((s,e) => s+(e.cal||0), 0));
+  // Tagesverbrauch nur für Tage mit irgendwelchen Daten anzeigen, sonst 0
+  const tdeeBar = days.map((d,i) => (eaten[i] > 0 || sport[i] > 0) ? tdee : 0);
+  const totalBurned = days.map((d,i) => tdeeBar[i] + sport[i]);
+  calChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days.map(d => formatDate(d, true)),
+      datasets: [
+        {
+          label: 'Gegessen',
+          data: eaten,
+          backgroundColor: 'rgba(224,123,57,0.75)',
+          borderColor: 'rgba(224,123,57,1)',
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 2
+        },
+        {
+          label: 'Tagesverbrauch',
+          data: tdeeBar,
+          backgroundColor: 'rgba(45,122,79,0.55)',
+          borderColor: 'rgba(45,122,79,0.9)',
+          borderWidth: 1,
+          borderRadius: 4,
+          order: 3
+        },
+        {
+          label: '+ Sport',
+          data: sport,
+          backgroundColor: 'rgba(76,175,125,0.85)',
+          borderColor: 'rgba(76,175,125,1)',
+          borderWidth: 1,
+          borderRadius: 4,
+          stack: 'burned',
+          order: 3
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            afterBody: function(items) {
+              const idx = items[0].dataIndex;
+              if (!totalBurned[idx]) return '';
+              const net = eaten[idx] - totalBurned[idx];
+              return net < 0
+                ? `→ Defizit: ${Math.abs(net)} kcal ✅`
+                : `→ Überschuss: ${net} kcal ⚠️`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: false },
+        y: { ticks: { callback: v => v + ' kcal' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderStatsOverview() {
+  const el = document.getElementById('statsOverview');
+  const count = weightLog.length;
+  if (!count) { el.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>Noch keine Daten</p></div>'; return; }
+  const first = weightLog[0];
+  const last = weightLog[count-1];
+  const diff = (first.weight - last.weight).toFixed(1);
+  const dayCount = Math.round((new Date(last.date) - new Date(first.date)) / 86400000) + 1;
+  const recipeCount = recipes.length;
+  el.innerHTML = `
+    <div class="grid3">
+      <div class="stat-box"><div class="val">${diff > 0 ? diff : '0'}</div><div class="lbl">kg abgenommen</div></div>
+      <div class="stat-box"><div class="val">${count}</div><div class="lbl">Gewichtseinträge</div></div>
+      <div class="stat-box"><div class="val">${recipeCount}</div><div class="lbl">Rezepte gespeichert</div></div>
+      <div class="stat-box"><div class="val">${dayCount}</div><div class="lbl">Tage dabei</div></div>
+      <div class="stat-box"><div class="val">${first.weight}</div><div class="lbl">kg Startgewicht</div></div>
+      <div class="stat-box"><div class="val">${last.weight}</div><div class="lbl">kg jetzt</div></div>
+    </div>`;
+}
+
+// ===== HELPERS =====
+function formatDate(dateStr, short) {
+  const d = new Date(dateStr + 'T00:00:00');
+  if (short) return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// ===== SAMPLE RECIPES =====
+function getSampleRecipes() {
+  return [
+    { id: '1', name: 'Griechischer Salat', cat: 'Salat', cal: 220, portions: 1, protein: '8', carbs: '10', fat: '16', ingredients: '150g Gurke\n2 Tomaten\n50g Feta\n10 Oliven\n1 rote Zwiebel\nOlivenöl, Oregano', instructions: 'Gemüse grob schneiden, Feta würfeln, alles mischen, mit Öl und Oregano abschmecken.', notes: 'Kalorienarm und sättigend – perfekt als Mittagessen.' },
+    { id: '2', name: 'Hähnchenbrust mit Brokkoli', cat: 'Hauptgericht', cal: 340, portions: 1, protein: '42', carbs: '12', fat: '10', ingredients: '200g Hähnchenbrust\n300g Brokkoli\n1 TL Olivenöl\nSalz, Pfeffer, Knoblauch', instructions: '1. Hähnchen würzen, in Pfanne braten (je 4 Min).\n2. Brokkoli dämpfen.\n3. Zusammen servieren.', notes: 'Hoher Proteingehalt – ideal nach Sport.' },
+    { id: '3', name: 'Haferflocken mit Beeren', cat: 'Frühstück', cal: 280, portions: 1, protein: '10', carbs: '45', fat: '6', ingredients: '60g Haferflocken\n200ml Milch (1,5%)\n80g gemischte Beeren\n1 TL Honig', instructions: 'Haferflocken mit Milch aufkochen, Beeren und Honig dazu.', notes: 'Hält bis Mittag satt.' },
+    { id: '4', name: 'Gemüsesuppe', cat: 'Suppe', cal: 180, portions: 2, protein: '6', carbs: '28', fat: '4', ingredients: '2 Karotten\n2 Kartoffeln\n1 Stange Lauch\n1 Zwiebel\n800ml Gemüsebrühe\nSalz, Pfeffer, Petersilie', instructions: 'Gemüse würfeln, in Brühe ca. 20 Min köcheln. Würzen und mit Petersilie servieren.', notes: 'Perfekt für kalte Tage – wenig Kalorien, viel Wärme.' },
+    { id: '5', name: 'Quark mit Leinsamen', cat: 'Snack', cal: 160, portions: 1, protein: '18', carbs: '8', fat: '5', ingredients: '200g Magerquark\n1 EL Leinsamen\n1 TL Honig', instructions: 'Alles verrühren und genießen.', notes: 'Perfekter Snack – satt und eiweißreich.' },
+  ];
+}
+
+// ===== GOOGLE DRIVE SYNC =====
+// Trage hier deine Client-ID ein (von Google Cloud Console):
+const GOOGLE_CLIENT_ID = 'DEINE_CLIENT_ID_HIER.apps.googleusercontent.com';
+const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE_NAME = 'abnahme-daten.json';
+
+let driveAccessToken = null;
+let driveFileId = null;
+let syncTimer = null;
+
+function driveAction() {
+  if (!driveAccessToken) {
+    connectDrive();
+  } else {
+    showDriveMenu();
+  }
+}
+
+function connectDrive() {
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('DEINE')) {
+    alert('Google Drive noch nicht eingerichtet.\nBitte erst die Client-ID eintragen.');
+    return;
+  }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { console.error(resp); return; }
+      driveAccessToken = resp.access_token;
+      document.getElementById('driveBtn').classList.add('connected');
+      document.getElementById('driveBtnIcon').textContent = '✅';
+      document.getElementById('driveBtnText').textContent = 'Sync';
+      // Erst laden, dann mergen
+      await loadFromDrive();
+      await saveToDrive();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function showDriveMenu() {
+  const actions = [
+    { label: '⬆️ Jetzt speichern', fn: saveToDrive },
+    { label: '⬇️ Neu laden', fn: loadFromDrive },
+    { label: '🔌 Trennen', fn: disconnectDrive }
+  ];
+  // Einfaches Popup
+  const msg = actions.map((a,i) => `${i+1}. ${a.label}`).join('\n');
+  const choice = prompt(`Google Drive:\n\n${msg}\n\nZahl eingeben:`);
+  const idx = parseInt(choice) - 1;
+  if (idx >= 0 && idx < actions.length) actions[idx].fn();
+}
+
+function disconnectDrive() {
+  driveAccessToken = null;
+  driveFileId = null;
+  document.getElementById('driveBtn').classList.remove('connected');
+  document.getElementById('driveBtnIcon').textContent = '☁️';
+  document.getElementById('driveBtnText').textContent = 'Drive';
+}
+
+async function saveToDrive() {
+  if (!driveAccessToken) return;
+  setDriveStatus('💾 Speichern…');
+  const data = {
+    ad_weightLog: load('ad_weightLog', []),
+    ad_dayLogs: load('ad_dayLogs', {}),
+    ad_recipes: load('ad_recipes', []),
+    ad_settings: load('ad_settings', {}),
+    savedAt: new Date().toISOString()
+  };
+  const body = JSON.stringify(data);
+  try {
+    if (!driveFileId) driveFileId = await findDriveFile();
+    if (driveFileId) {
+      // Update
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
+        body
+      });
+    } else {
+      // Create
+      const meta = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'] })
+      }).then(r => r.json());
+      driveFileId = meta.id;
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
+        body
+      });
+    }
+    setDriveStatus('✅ Gespeichert');
+    setTimeout(() => setDriveStatus(null), 3000);
+  } catch(e) {
+    setDriveStatus('❌ Fehler');
+    setTimeout(() => setDriveStatus(null), 4000);
+  }
+}
+
+async function loadFromDrive() {
+  if (!driveAccessToken) return;
+  setDriveStatus('⬇️ Laden…');
+  try {
+    if (!driveFileId) driveFileId = await findDriveFile();
+    if (!driveFileId) { setDriveStatus(null); return; }
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+      headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+    });
+    const data = await resp.json();
+    // Nur überschreiben wenn Drive-Daten neuer sind
+    if (data.ad_weightLog) save('ad_weightLog', data.ad_weightLog);
+    if (data.ad_dayLogs)   save('ad_dayLogs', data.ad_dayLogs);
+    if (data.ad_recipes)   save('ad_recipes', data.ad_recipes);
+    if (data.ad_settings)  save('ad_settings', data.ad_settings);
+    // Neu laden
+    weightLog = load('ad_weightLog', []);
+    dayLogs   = load('ad_dayLogs', {});
+    recipes   = load('ad_recipes', []);
+    settings  = load('ad_settings', { height:'160', goalWeight:'', age:'55', weight:'84' });
+    renderWeightHistory();
+    renderDay();
+    renderRecipes();
+    document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
+    setDriveStatus('✅ Geladen');
+    setTimeout(() => setDriveStatus(null), 3000);
+  } catch(e) {
+    setDriveStatus('❌ Fehler');
+    setTimeout(() => setDriveStatus(null), 4000);
+  }
+}
+
+async function findDriveFile() {
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE_NAME}'&fields=files(id)`, {
+    headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+  });
+  const data = await resp.json();
+  return data.files && data.files.length ? data.files[0].id : null;
+}
+
+function setDriveStatus(msg) {
+  const btn = document.getElementById('driveBtn');
+  if (msg) {
+    document.getElementById('driveBtnText').textContent = msg;
+  } else {
+    document.getElementById('driveBtnText').textContent = driveAccessToken ? 'Sync' : 'Drive';
+    document.getElementById('driveBtnIcon').textContent = driveAccessToken ? '✅' : '☁️';
+  }
+}
+
+// Auto-Save nach jeder Änderung (3 Sek. Verzögerung)
+const origSave = save;
+function save(key, val) {
+  origSave(key, val);
+  if (driveAccessToken && key.startsWith('ad_')) {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(saveToDrive, 3000);
+  }
+}
+
+// ===== SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { scope: '/abnahme-tagebuch/' })
+    .then(() => console.log('SW registered'))
+    .catch(e => console.log('SW error:', e));
+}
+</script>
+</body>
+</html>
