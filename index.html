@@ -211,6 +211,9 @@
     <span id="driveBtnIcon">☁️</span>
     <span id="driveBtnText">Drive</span>
   </button>
+  <button id="driveBtn" onclick="document.getElementById('syncModal').style.display='flex'" title="Daten exportieren/importieren" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">
+    📦 Sync
+  </button>
 </header>
 
 <nav>
@@ -411,6 +414,27 @@
   </div>
 </div>
 
+<!-- ===== EXPORT/IMPORT MODAL ===== -->
+<div id="syncModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto">
+    <h2 style="color:var(--green);margin-bottom:16px">📦 Daten übertragen</h2>
+    <div style="margin-bottom:16px">
+      <b>1. Exportieren (Daten kopieren)</b>
+      <p style="font-size:12px;color:var(--gray);margin:6px 0">Klick "Exportieren", dann den Text komplett markieren und kopieren (Strg+A, Strg+C).</p>
+      <button class="btn btn-primary btn-sm" onclick="exportData()" style="margin-bottom:8px">📤 Exportieren</button>
+      <textarea id="exportBox" style="width:100%;height:120px;font-size:11px;font-family:monospace" readonly placeholder="Hier erscheinen deine Daten..."></textarea>
+    </div>
+    <hr style="margin:16px 0">
+    <div>
+      <b>2. Importieren (Daten einfügen)</b>
+      <p style="font-size:12px;color:var(--gray);margin:6px 0">Kopierten Text hier einfügen (Strg+V), dann "Importieren" klicken.</p>
+      <textarea id="importBox" style="width:100%;height:120px;font-size:11px;font-family:monospace" placeholder="Kopierten Text hier einfügen..."></textarea>
+      <button class="btn btn-primary btn-sm" onclick="importData()" style="margin-top:8px">📥 Importieren</button>
+    </div>
+    <button class="btn btn-gray btn-sm" onclick="document.getElementById('syncModal').style.display='none'" style="margin-top:16px;width:100%">Schließen</button>
+  </div>
+</div>
+
 <!-- ===== TAB: STRATEGIE ===== -->
 <div class="tab" id="tab-tipps">
 
@@ -563,6 +587,10 @@ function load(key, def) {
 }
 function save(key, val) {
   localStorage.setItem(key, JSON.stringify(val));
+  if (driveAccessToken && key.startsWith('ad_')) {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(saveToDrive, 3000);
+  }
 }
 
 let weightLog = load('ad_weightLog', []);
@@ -1891,62 +1919,4 @@ async function loadFromDrive() {
       headers: { 'Authorization': `Bearer ${driveAccessToken}` }
     });
     const data = await resp.json();
-    // Nur überschreiben wenn Drive-Daten neuer sind
-    if (data.ad_weightLog) save('ad_weightLog', data.ad_weightLog);
-    if (data.ad_dayLogs)   save('ad_dayLogs', data.ad_dayLogs);
-    if (data.ad_recipes)   save('ad_recipes', data.ad_recipes);
-    if (data.ad_settings)  save('ad_settings', data.ad_settings);
-    // Neu laden
-    weightLog = load('ad_weightLog', []);
-    dayLogs   = load('ad_dayLogs', {});
-    recipes   = load('ad_recipes', []);
-    settings  = load('ad_settings', { height:'160', goalWeight:'', age:'55', weight:'84' });
-    renderWeightHistory();
-    renderDay();
-    renderRecipes();
-    document.getElementById('bmr-display').value = calcTDEE() + ' kcal/Tag';
-    setDriveStatus('✅ Geladen');
-    setTimeout(() => setDriveStatus(null), 3000);
-  } catch(e) {
-    setDriveStatus('❌ Fehler');
-    setTimeout(() => setDriveStatus(null), 4000);
-  }
-}
-
-async function findDriveFile() {
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D'${DRIVE_FILE_NAME}'%20and%20trashed%3Dfalse&fields=files(id)`, {
-    headers: { 'Authorization': `Bearer ${driveAccessToken}` }
-  });
-  const data = await resp.json();
-  return data.files && data.files.length ? data.files[0].id : null;
-}
-
-function setDriveStatus(msg) {
-  const btn = document.getElementById('driveBtn');
-  if (msg) {
-    document.getElementById('driveBtnText').textContent = msg;
-  } else {
-    document.getElementById('driveBtnText').textContent = driveAccessToken ? 'Sync' : 'Drive';
-    document.getElementById('driveBtnIcon').textContent = driveAccessToken ? '✅' : '☁️';
-  }
-}
-
-// Auto-Save nach jeder Änderung (3 Sek. Verzögerung)
-const origSave = save;
-function save(key, val) {
-  origSave(key, val);
-  if (driveAccessToken && key.startsWith('ad_')) {
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(saveToDrive, 3000);
-  }
-}
-
-// ===== SERVICE WORKER =====
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js', { scope: '/abnahme-tagebuch/' })
-    .then(() => console.log('SW registered'))
-    .catch(e => console.log('SW error:', e));
-}
-</script>
-</body>
-</html>
+    // Nur überschre
